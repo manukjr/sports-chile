@@ -2,10 +2,14 @@
 """
 run_ci.py — headless wrapper for GitHub Actions.
 
-Differences from running sports.py directly:
+Differences from running sports_ci.py directly:
   - No interactive date menu (uses CLI arg or today in Santiago time)
   - No browser auto-open
-  - Copies the generated file to public/index.html for GitHub Pages
+  - Copies the generated file to docs/index.html for GitHub Pages
+
+Required env vars (passed as GitHub Actions secrets):
+    API_FOOTBALL_KEY   — api-sports.io
+    RAPIDAPI_KEY       — RapidAPI (Matchstat Tennis)
 
 Usage:
     python run_ci.py              # today in CLT
@@ -26,21 +30,20 @@ if len(sys.argv) < 2:
     today = datetime.now(ZoneInfo("America/Santiago")).strftime("%Y-%m-%d")
     sys.argv.append(today)
 
-# ── 3. Run the real script ────────────────────────────────────────────────────
+# ── 3. Run the CI script (api-football + Matchstat, datacenter-friendly) ─────
 import asyncio
-import sports
+import sports_ci
 
-asyncio.run(sports.main())
+asyncio.run(sports_ci.main())
 
-# ── 4. Copy output to public/index.html for GitHub Pages ─────────────────────
+# ── 4. Copy output to docs/index.html for GitHub Pages ──────────────────────
 date_str = sys.argv[1]
 src  = Path(f"deportes_{date_str}.html")
-dest_dir = Path("public")
+dest_dir = Path("docs")
 dest_dir.mkdir(exist_ok=True)
 
 if src.exists():
     (dest_dir / "index.html").write_bytes(src.read_bytes())
-    (dest_dir / src.name).write_bytes(src.read_bytes())
-    print(f"Copied → public/index.html  and  public/{src.name}")
+    print(f"Copied → docs/index.html")
 else:
-    print(f"WARNING: {src} not found — nothing copied to public/")
+    print(f"WARNING: {src} not found — nothing copied to docs/")

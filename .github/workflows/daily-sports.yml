@@ -63,18 +63,22 @@ jobs:
           fi
 
       # 5. Run the scraper via the CI wrapper
+      #    Secrets are injected as env vars; sports_ci.py reads them via os.environ
       - name: Generate HTML
+        env:
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
         run: python run_ci.py ${{ steps.date.outputs.target }}
 
       # 6. Wire up GitHub Pages
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      # 7. Upload the public/ folder as the Pages artifact
+      # 7. Upload the docs/ folder as the Pages artifact
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: public/
+          path: docs/
 
       # 8. Deploy
       - name: Deploy to GitHub Pages
