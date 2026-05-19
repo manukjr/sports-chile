@@ -1032,9 +1032,7 @@ async def main() -> None:
     date_str = target.strftime("%Y-%m-%d")
     LOG.info("Fetching sports for %s (CLT)", date_str)
 
-    # Warn early if keys are missing — useful when running locally for testing
-    if not API_FOOTBALL_KEY:
-        LOG.warning("API_FOOTBALL_KEY not set — Group 1 (football) will be skipped")
+    # Warn early if the tennis key is missing
     if not RAPIDAPI_KEY:
         LOG.warning("RAPIDAPI_KEY not set — Group 4 (tennis) will be skipped")
 
