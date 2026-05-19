@@ -63,10 +63,8 @@ jobs:
           fi
 
       # 5. Run the scraper via the CI wrapper
-      #    RAPIDAPI_KEY is the only secret needed (football uses ESPN public API)
+      #    No API keys needed — all sources are ESPN public APIs or public scraping
       - name: Generate HTML
-        env:
-          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
         run: python run_ci.py ${{ steps.date.outputs.target }}
 
       # 6. Wire up GitHub Pages

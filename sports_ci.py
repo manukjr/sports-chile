@@ -2,14 +2,12 @@
 """
 sports_ci.py — CI-friendly sports schedule scraper (GitHub Actions / headless).
 
-Replaces SofaScore (blocked on datacenter IPs) with:
-  • Group 1  Football → ESPN Soccer scoreboard API  (no key, same as Group 2)
-  • Group 4  Tennis   → Matchstat Tennis API via RapidAPI  (~2 req/day)
+Replaces SofaScore (blocked on datacenter IPs) with ESPN's public APIs:
+  • Group 1  Football → ESPN Soccer scoreboard API   (no key)
+  • Group 4  Tennis   → ESPN Tennis scoreboard API   (no key, ATP + WTA)
 
-Groups 2 (ESPN/UFC), 3 (F1/WEC/GT) and HTML generation are identical to sports.py.
-
-Required environment variables:
-    RAPIDAPI_KEY  — rapidapi.com → "My Apps" → Default App → Authorization
+No external API keys required — everything runs on ESPN public endpoints
+and public scraping (UFC, F1, WEC, GT World Challenge).
 
 Usage (normally called via run_ci.py, not directly):
     python sports_ci.py [YYYY-MM-DD]
@@ -17,7 +15,6 @@ Usage (normally called via run_ci.py, not directly):
 
 import asyncio
 import logging
-import os
 import sys
 import webbrowser
 from datetime import datetime, date, timezone, timedelta
@@ -66,10 +63,9 @@ ESPN_SOCCER_LEAGUES: dict[str, tuple[str, str]] = {
 }
 
 
-# ── Matchstat Tennis API via RapidAPI (Group 4) ───────────────────────────────
-RAPIDAPI_KEY  = os.environ.get("RAPIDAPI_KEY", "")
-RAPIDAPI_HOST = "tennis-api-atp-wta-itf.p.rapidapi.com"
-TENNIS_BASE   = f"https://{RAPIDAPI_HOST}/tennis/v2"
+# ── ESPN Tennis API (Group 4) ─────────────────────────────────────────────────
+# Same public API family as football (Group 1) and US sports (Group 2). No key.
+ESPN_TENNIS_BASE = "https://site.api.espn.com/apis/site/v2/sports/tennis"
 
 # ── Broadcaster maps ──────────────────────────────────────────────────────────
 BROADCASTER_MAP = {
@@ -677,83 +673,110 @@ async def fetch_group3(date_str: str, client: httpx.AsyncClient) -> tuple[list[E
 
 
 # ---------------------------------------------------------------------------
-# GROUP 4 — ATP & WTA Tennis  (Matchstat via RapidAPI)
+# GROUP 4 — ATP & WTA Tennis  (ESPN public tennis scoreboard API)
 # ---------------------------------------------------------------------------
 
-async def _fetch_tennis_tour(
-    tour: str,   # "atp" or "wta"
+async def _fetch_espn_tennis(
+    tour_slug: str,    # "atp" or "wta"
+    label: str,        # "ATP" or "WTA"
+    singles_key: str,  # "Men's Singles" or "Women's Singles"
     date_str: str,
     client: httpx.AsyncClient,
 ) -> tuple[list[Event], str | None]:
-    """Fetch tennis fixtures for one tour from the Matchstat Tennis API on RapidAPI."""
-    url = f"{TENNIS_BASE}/{tour}/fixtures/{date_str}"
-    headers = {
-        **HEADERS,
-        "X-RapidAPI-Key":  RAPIDAPI_KEY,
-        "X-RapidAPI-Host": RAPIDAPI_HOST,
-    }
-    params = {"include": "round,tournament"}
+    """
+    Fetch tennis matches for one tour from ESPN's public scoreboard API.
 
+    ESPN returns one 'event' per tournament (e.g. Roland Garros, Hamburg Open).
+    Each event contains 'groupings' split by gender/category.
+    We filter to the correct singles grouping and to matches on target_date only.
+
+    Grand Slams: shown as one summary row (100+ matches/day — individual listing is noise).
+    Other tournaments: individual match rows, capped at 10 per tournament.
+    """
+    url = f"{ESPN_TENNIS_BASE}/{tour_slug}/scoreboard"
     try:
-        r = await client.get(url, params=params, headers=headers)
+        r = await client.get(url, params={"dates": date_str.replace("-", "")}, headers=HEADERS)
+        if r.status_code in (400, 404):
+            return [], None
         r.raise_for_status()
         data = r.json()
     except Exception as exc:
-        LOG.error("Matchstat %s error: %s", tour.upper(), exc)
-        return [], f"Tennis {tour.upper()} (Matchstat): {exc}"
+        LOG.error("ESPN tennis %s error: %s", label, exc)
+        return [], f"Tennis {label} (ESPN): {exc}"
 
-    label = "ATP" if tour == "atp" else "WTA"
-
-    # Response is {"data": [...]} or directly a list
-    fixtures = data.get("data") if isinstance(data, dict) else data
-    if not isinstance(fixtures, list):
-        LOG.warning("Matchstat %s: unexpected response shape: %s", tour.upper(), type(data))
-        fixtures = []
-
+    platform = _platform(label)
     events: list[Event] = []
-    for match in fixtures:
-        p1 = match.get("player1") or {}
-        p2 = match.get("player2") or {}
-        home = p1.get("name", "TBD") if isinstance(p1, dict) else str(p1)
-        away = p2.get("name", "TBD") if isinstance(p2, dict) else str(p2)
 
-        tourn      = match.get("tournament") or {}
-        tourn_name = tourn.get("name", "") if isinstance(tourn, dict) else str(tourn)
+    for ev in data.get("events", []):
+        tourn_name = ev.get("name", "")
+        is_major   = ev.get("major", False)
 
-        rnd        = match.get("round") or {}
-        round_name = rnd.get("name", "") if isinstance(rnd, dict) else str(rnd)
+        for grp in ev.get("groupings", []):
+            grp_name = grp.get("grouping", {}).get("displayName", "")
+            if grp_name != singles_key:
+                continue  # skip doubles, mixed, opposite gender
 
-        # Skip doubles to keep output readable
-        if "doubles" in tourn_name.lower() or "doubles" in round_name.lower():
-            continue
+            # Keep only matches that start today and are not yet Final
+            today_comps = [
+                c for c in grp.get("competitions", [])
+                if date_str in c.get("date", "")
+                and c.get("status", {}).get("type", {}).get("description", "") != "Final"
+            ]
+            if not today_comps:
+                continue
 
-        date_iso = match.get("date", "")
-        time_clt = _iso_to_clt(date_iso) if date_iso else "TBD"
-
-        events.append(Event(
-            competition=f"{label} — {tourn_name}" if tourn_name else label,
-            category="other",
-            home_team=home,
-            away_team=away,
-            time_clt=time_clt,
-            platform=_platform(label),
-            round=round_name,
-        ))
+            if is_major:
+                # Grand Slam: one summary row to avoid flooding the page
+                first_time = min((c.get("date", "") for c in today_comps), default="")
+                events.append(Event(
+                    competition=f"{label} — {tourn_name}",
+                    category="other",
+                    home_team=f"{len(today_comps)} partidos programados",
+                    away_team="",
+                    time_clt=_iso_to_clt(first_time) if first_time else "TBD",
+                    platform=platform,
+                    round=grp_name,
+                ))
+            else:
+                # Regular tournament: individual match rows (cap at 10)
+                for c in today_comps[:10]:
+                    competitors = c.get("competitors", [])
+                    home = next(
+                        (x.get("athlete", {}).get("displayName", "?")
+                         for x in competitors if x.get("homeAway") == "home"), "TBD"
+                    )
+                    away = next(
+                        (x.get("athlete", {}).get("displayName", "?")
+                         for x in competitors if x.get("homeAway") == "away"), "TBD"
+                    )
+                    court = c.get("venue", {}).get("court", "")
+                    events.append(Event(
+                        competition=f"{label} — {tourn_name}",
+                        category="other",
+                        home_team=home,
+                        away_team=away,
+                        time_clt=_iso_to_clt(c.get("date", "")),
+                        platform=platform,
+                        round=court,
+                    ))
 
     return events, None
 
 
 async def fetch_group4(date_str: str, client: httpx.AsyncClient) -> tuple[list[Event], list[str]]:
-    """Fetch ATP and WTA tennis fixtures from Matchstat via RapidAPI."""
-    if not RAPIDAPI_KEY:
-        return [], ["Tennis: variable de entorno RAPIDAPI_KEY no configurada"]
-
-    atp_evs, atp_err = await _fetch_tennis_tour("atp", date_str, client)
-    wta_evs, wta_err = await _fetch_tennis_tour("wta", date_str, client)
-
-    events = atp_evs + wta_evs
-    errors = [e for e in [atp_err, wta_err] if e]
-    return events, errors
+    """Fetch ATP and WTA tennis from ESPN's public tennis scoreboard API. No key required."""
+    results = await asyncio.gather(
+        _fetch_espn_tennis("atp", "ATP", "Men's Singles",   date_str, client),
+        _fetch_espn_tennis("wta", "WTA", "Women's Singles", date_str, client),
+        return_exceptions=False,
+    )
+    all_events: list[Event] = []
+    errors: list[str] = []
+    for evs, err in results:
+        all_events.extend(evs)
+        if err:
+            errors.append(err)
+    return all_events, errors
 
 
 # ---------------------------------------------------------------------------
@@ -1031,10 +1054,6 @@ async def main() -> None:
     target   = _pick_date()
     date_str = target.strftime("%Y-%m-%d")
     LOG.info("Fetching sports for %s (CLT)", date_str)
-
-    # Warn early if the tennis key is missing
-    if not RAPIDAPI_KEY:
-        LOG.warning("RAPIDAPI_KEY not set — Group 4 (tennis) will be skipped")
 
     timeout = httpx.Timeout(30.0, connect=10.0)
     async with httpx.AsyncClient(timeout=timeout) as client:
