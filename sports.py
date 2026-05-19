@@ -973,6 +973,14 @@ async def main() -> None:
 
     timeout = httpx.Timeout(30.0, connect=10.0)
     async with httpx.AsyncClient(timeout=timeout) as client:
+        # SofaScore requires a session handshake — visit homepage first so the
+        # HTTP client carries the right session state for subsequent API calls.
+        # This is needed both locally and in headless CI environments.
+        try:
+            await client.get("https://www.sofascore.com/", headers=HEADERS, follow_redirects=True)
+        except Exception:
+            pass  # non-fatal; API calls will try anyway
+
         results = await asyncio.gather(
             fetch_group1(date_str, client),
             fetch_group2(date_str, client),
