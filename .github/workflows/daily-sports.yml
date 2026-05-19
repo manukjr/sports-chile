@@ -1,0 +1,80 @@
+name: Daily Sports Schedule
+
+# ── Triggers ──────────────────────────────────────────────────────────────────
+on:
+  schedule:
+    # 12:00 UTC = 08:00 CLT (winter, UTC-4) / 09:00 CLST (summer, UTC-3)
+    - cron: '0 12 * * *'
+
+  workflow_dispatch:
+    # Manual trigger from the GitHub UI — optionally pick a date
+    inputs:
+      date:
+        description: 'Date to generate (YYYY-MM-DD). Leave blank for today.'
+        required: false
+        default: ''
+
+# ── Permissions for GitHub Pages deployment ───────────────────────────────────
+permissions:
+  pages: write
+  id-token: write
+
+# Prevent two deployments running in parallel
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+# ── Job ───────────────────────────────────────────────────────────────────────
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      # 1. Check out the repo
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Set up Python
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # 4. Decide which date to generate
+      #    Priority: manual input → today in Santiago timezone
+      - name: Resolve target date
+        id: date
+        run: |
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            echo "target=${{ github.event.inputs.date }}" >> $GITHUB_OUTPUT
+          else
+            echo "target=$(TZ='America/Santiago' date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+          fi
+
+      # 5. Run the scraper via the CI wrapper
+      - name: Generate HTML
+        run: python run_ci.py ${{ steps.date.outputs.target }}
+
+      # 6. Wire up GitHub Pages
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      # 7. Upload the public/ folder as the Pages artifact
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public/
+
+      # 8. Deploy
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
