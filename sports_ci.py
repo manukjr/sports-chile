@@ -3,14 +3,13 @@
 sports_ci.py — CI-friendly sports schedule scraper (GitHub Actions / headless).
 
 Replaces SofaScore (blocked on datacenter IPs) with:
-  • Group 1  Football → api-football.com  (api-sports.io)    ~12 req/day
-  • Group 4  Tennis   → Matchstat Tennis API (via RapidAPI)   ~2 req/day
+  • Group 1  Football → ESPN Soccer scoreboard API  (no key, same as Group 2)
+  • Group 4  Tennis   → Matchstat Tennis API via RapidAPI  (~2 req/day)
 
 Groups 2 (ESPN/UFC), 3 (F1/WEC/GT) and HTML generation are identical to sports.py.
 
 Required environment variables:
-    API_FOOTBALL_KEY   — api-sports.io dashboard → "My Account" → API Key
-    RAPIDAPI_KEY       — rapidapi.com → "My Apps" → Default App → Authorization
+    RAPIDAPI_KEY  — rapidapi.com → "My Apps" → Default App → Authorization
 
 Usage (normally called via run_ci.py, not directly):
     python sports_ci.py [YYYY-MM-DD]
@@ -48,39 +47,23 @@ HEADERS = {
     "Accept-Language": "es-CL,es;q=0.9,en;q=0.8",
 }
 
-# ── api-football.com (Group 1) ────────────────────────────────────────────────
-API_FOOTBALL_KEY  = os.environ.get("API_FOOTBALL_KEY", "")
-API_FOOTBALL_BASE = "https://v3.football.api-sports.io"
-
-# league_id → (display name, Chilean platform)
-# IDs verified at https://www.api-football.com/documentation-v3#tag/Leagues
-API_FOOTBALL_LEAGUES: dict[int, tuple[str, str]] = {
-    2:   ("UEFA Champions League",      "ESPN / Disney+"),
-    3:   ("UEFA Europa League",         "ESPN / Disney+"),
-    39:  ("Premier League",             "ESPN / Disney+"),
-    135: ("Serie A Italia",             "ESPN / Disney+"),
-    78:  ("Bundesliga",                 "ESPN / Disney+"),
-    140: ("La Liga",                    "ESPN / Disney+"),
-    61:  ("Ligue 1",                    "ESPN / Disney+"),
-    329: ("Copa Libertadores",          "Disney+ Premium"),
-    330: ("Copa Sudamericana",          "Disney+ Premium / DirecTV Sports"),
-    71:  ("Brasileirao Betano",         "KICK.com"),
-    128: ("Liga Profesional Argentina", "ESPN / Disney+"),
-    265: ("Liga de Primera Chile",      "CDF"),
+# ── ESPN Soccer API (Group 1) ─────────────────────────────────────────────────
+# Same public API family as NBA/NFL/MLB (Group 2). No key required.
+# slug → (display name, Chilean platform)
+ESPN_SOCCER_LEAGUES: dict[str, tuple[str, str]] = {
+    "uefa.champions":        ("UEFA Champions League",      "ESPN / Disney+"),
+    "uefa.europa":           ("UEFA Europa League",         "ESPN / Disney+"),
+    "eng.1":                 ("Premier League",             "ESPN / Disney+"),
+    "ita.1":                 ("Serie A Italia",             "ESPN / Disney+"),
+    "ger.1":                 ("Bundesliga",                 "ESPN / Disney+"),
+    "esp.1":                 ("La Liga",                    "ESPN / Disney+"),
+    "fra.1":                 ("Ligue 1",                    "ESPN / Disney+"),
+    "conmebol.libertadores": ("Copa Libertadores",          "Disney+ Premium"),
+    "conmebol.sudamericana": ("Copa Sudamericana",          "Disney+ Premium / DirecTV Sports"),
+    "bra.1":                 ("Brasileirao Betano",         "KICK.com"),
+    "arg.1":                 ("Liga Profesional Argentina", "ESPN / Disney+"),
+    "chi.1":                 ("Liga de Primera Chile",      "CDF"),
 }
-
-# These leagues run on a calendar year (2026 season = 2026).
-# European leagues run Aug–May so their season = the year they *start*
-# (e.g. the 2025-26 Premier League → season=2025).
-_CALENDAR_YEAR_LEAGUES = {71, 128, 265, 329, 330}  # Brasileirao, Arg, Chile, Lib, Sud
-
-
-def _football_season(league_id: int, target_date: date) -> int:
-    """Return the api-football 'season' integer for a given league and date."""
-    if league_id in _CALENDAR_YEAR_LEAGUES:
-        return target_date.year
-    # European leagues: new season starts in July/August
-    return target_date.year if target_date.month >= 7 else target_date.year - 1
 
 
 # ── Matchstat Tennis API via RapidAPI (Group 4) ───────────────────────────────
@@ -173,59 +156,69 @@ def _iso_to_clt(iso: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# GROUP 1 — Fútbol Europeo & Sudamericano  (api-football.com)
+# GROUP 1 — Fútbol Europeo & Sudamericano  (ESPN Soccer public API)
 # ---------------------------------------------------------------------------
 
-async def _fetch_league(
-    league_id: int,
+async def _espn_soccer(
+    slug: str,
     display_name: str,
     platform: str,
-    date_str: str,
-    season: int,
+    date_compact: str,
     client: httpx.AsyncClient,
 ) -> tuple[list[Event], str | None]:
-    """Fetch fixtures for one league from api-football.com."""
-    url     = f"{API_FOOTBALL_BASE}/fixtures"
-    params  = {"date": date_str, "league": league_id, "season": season}
-    headers = {**HEADERS, "x-apisports-key": API_FOOTBALL_KEY}
-
+    """Fetch one league's fixtures from ESPN's public soccer scoreboard API."""
+    url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{slug}/scoreboard"
     try:
-        r = await client.get(url, params=params, headers=headers)
+        r = await client.get(url, params={"dates": date_compact}, headers=HEADERS)
+        # ESPN returns 400/404 for leagues with no coverage — treat as empty, not error
+        if r.status_code in (400, 404):
+            return [], None
         r.raise_for_status()
         data = r.json()
     except Exception as exc:
-        LOG.error("api-football league %d error: %s", league_id, exc)
-        return [], f"{display_name} (api-football): {exc}"
-
-    # api-football returns API-level errors inside the JSON body
-    api_errors = data.get("errors")
-    if api_errors:
-        msg = str(api_errors)
-        LOG.error("api-football league %d response error: %s", league_id, msg)
-        return [], f"{display_name}: {msg}"
+        LOG.error("ESPN soccer %s error: %s", slug, exc)
+        return [], f"{display_name} (ESPN soccer): {exc}"
 
     events: list[Event] = []
-    for fixture in data.get("response", []):
-        fix   = fixture.get("fixture", {})
-        teams = fixture.get("teams", {})
-        lg    = fixture.get("league", {})
+    for game in data.get("events", []):
+        date_iso = game.get("date", "")
+        time_clt = _iso_to_clt(date_iso)
+        status   = game.get("status", {}).get("type", {}).get("description", "")
 
-        home = teams.get("home", {}).get("name", "TBD")
-        away = teams.get("away", {}).get("name", "TBD")
+        # Extract home/away from the competitors array (more reliable than splitting name)
+        home_t = away_t = ""
+        us_networks: list[str] = []
+        for comp in game.get("competitions", []):
+            for competitor in comp.get("competitors", []):
+                team_name = competitor.get("team", {}).get("displayName", "")
+                if competitor.get("homeAway") == "home":
+                    home_t = team_name
+                elif competitor.get("homeAway") == "away":
+                    away_t = team_name
+            for bc in comp.get("broadcasts", []):
+                us_networks.extend(bc.get("names", []))
 
-        # Prefer Unix timestamp; fall back to ISO date string
-        ts = fix.get("timestamp")
-        time_clt = _utc_to_clt(ts) if ts else _iso_to_clt(fix.get("date", ""))
+        # Resolve US broadcast network → Chilean platform (same logic as Group 2)
+        resolved_platform = platform
+        for net in us_networks:
+            mapped = ESPN_NETWORK_TO_CHILE.get(net)
+            if mapped:
+                resolved_platform = mapped
+                break
 
-        round_info = lg.get("round", "")
+        # Round info lives inside league node
+        round_info = (
+            game.get("season", {}).get("slug", "")
+            or status
+        )
 
         events.append(Event(
             competition=display_name,
             category="soccer",
-            home_team=home,
-            away_team=away,
+            home_team=home_t or "TBD",
+            away_team=away_t or "TBD",
             time_clt=time_clt,
-            platform=platform,
+            platform=resolved_platform,
             round=round_info,
         ))
 
@@ -233,19 +226,11 @@ async def _fetch_league(
 
 
 async def fetch_group1(date_str: str, client: httpx.AsyncClient) -> tuple[list[Event], list[str]]:
-    """Fetch football fixtures from api-football.com for all configured leagues."""
-    if not API_FOOTBALL_KEY:
-        return [], ["Fútbol: variable de entorno API_FOOTBALL_KEY no configurada"]
-
-    target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-
+    """Fetch football fixtures from ESPN's public soccer API for all configured leagues."""
+    date_compact = date_str.replace("-", "")
     tasks = [
-        _fetch_league(
-            lid, name, platform, date_str,
-            _football_season(lid, target_date),
-            client,
-        )
-        for lid, (name, platform) in API_FOOTBALL_LEAGUES.items()
+        _espn_soccer(slug, name, platform, date_compact, client)
+        for slug, (name, platform) in ESPN_SOCCER_LEAGUES.items()
     ]
     results = await asyncio.gather(*tasks, return_exceptions=False)
 
