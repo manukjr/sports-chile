@@ -268,119 +268,54 @@ async def _espn_sport(
     return events, None
 
 
-def _ufc_fighter_name(fight_el, corner: str) -> str:
-    """Extract a clean fighter name from a .c-listing-fight element.
-    corner is 'red' or 'blue'. Handles the given+family span split."""
-    el = fight_el.select_one(f".c-listing-fight__corner-name--{corner}")
-    if not el:
-        return "?"
-    given  = el.select_one(".c-listing-fight__corner-given-name")
-    family = el.select_one(".c-listing-fight__corner-family-name")
-    if given and family:
-        return f"{given.get_text(strip=True)} {family.get_text(strip=True)}"
-    return el.get_text(strip=True)
-
-
 async def _fetch_ufc(target_date: datetime.date, client: httpx.AsyncClient) -> tuple[list[Event], str | None]:
-    """Scrape UFC events listing, then each matching event's detail page for all fights."""
-    events: list[Event] = []
+    """Fetch UFC fight card from ESPN's public MMA scoreboard API.
+    Works from any IP (no geo-redirect, no bot protection)."""
+    url = "https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard"
     try:
-        r = await client.get("https://www.ufc.com/events", headers=HEADERS, follow_redirects=True)
+        r = await client.get(url, params={"dates": target_date.strftime("%Y%m%d")}, headers=HEADERS)
+        if r.status_code in (400, 404):
+            return [], None
         r.raise_for_status()
-        soup = BeautifulSoup(r.text, "lxml")
-        base_url = str(r.url).rstrip("/").rsplit("/", 1)[0]  # e.g. https://www.ufcespanol.com
+        data = r.json()
     except Exception as exc:
-        LOG.error("UFC scrape error: %s", exc)
-        return events, f"UFC (ufc.com): {exc}"
+        LOG.error("UFC ESPN error: %s", exc)
+        return [], f"UFC (ESPN): {exc}"
 
-    # Step 1: find cards matching target_date via Unix timestamp
-    for card in soup.select("article.c-card-event--result"):
-        date_el = card.select_one(".c-card-event--result__date.tz-change-data")
-        if not date_el:
-            continue
-        ts_str = date_el.get("data-main-card-timestamp", "")
-        try:
-            main_ts = int(ts_str)
-        except (ValueError, TypeError):
+    events: list[Event] = []
+
+    for ev in data.get("events", []):
+        fights = ev.get("competitions", [])
+        if not fights:
             continue
 
-        event_date_clt = datetime.fromtimestamp(main_ts, tz=timezone.utc).astimezone(CLT).date()
-        if event_date_clt != target_date:
-            continue
+        # Infer card section from start time: latest time = main card, earlier = prelims.
+        times = sorted(set(f.get("date", "") for f in fights if f.get("date")))
+        if len(times) == 1:
+            section_map = {times[0]: "Cartelera Estelar"}
+        elif len(times) == 2:
+            section_map = {times[0]: "Prelims", times[1]: "Cartelera Estelar"}
+        else:
+            section_map = {times[0]: "Early Prelims", times[-1]: "Cartelera Estelar"}
+            for t in times[1:-1]:
+                section_map[t] = "Prelims"
 
-        # Also grab prelims timestamp for its CLT time
-        pre_ts_str = date_el.get("data-prelims-card-timestamp", "")
-        try:
-            prelims_ts = int(pre_ts_str)
-        except (ValueError, TypeError):
-            prelims_ts = None
+        for fight in fights:
+            competitors = sorted(fight.get("competitors", []), key=lambda x: x.get("order", 0))
+            fighter1 = competitors[0].get("athlete", {}).get("displayName", "TBD") if len(competitors) > 0 else "TBD"
+            fighter2 = competitors[1].get("athlete", {}).get("displayName", "TBD") if len(competitors) > 1 else "TBD"
+            weight   = fight.get("type", {}).get("abbreviation", "")
+            fight_dt = fight.get("date", "")
+            section  = section_map.get(fight_dt, "UFC")
 
-        # Step 2: get the event detail URL
-        link_el = card.select_one("h3.c-card-event--result__headline a")
-        href = link_el.get("href", "") if link_el else ""
-        if not href:
-            continue
-        detail_url = f"https://www.ufcespanol.com{href}" if href.startswith("/") else href
-
-        # Step 3: fetch detail page and parse all fights
-        try:
-            r2 = await client.get(detail_url, headers=HEADERS, follow_redirects=True)
-            r2.raise_for_status()
-            soup2 = BeautifulSoup(r2.text, "lxml")
-        except Exception as exc:
-            LOG.error("UFC detail page error: %s", exc)
-            continue
-
-        # Build a list of (fight_element, section_label, timestamp) triples.
-        # UFC pages use different structures per event, so we try three strategies
-        # in order and stop at the first one that yields any fights.
-        fight_triples: list[tuple] = []
-
-        # Strategy A: explicit div wrappers (most detailed events)
-        sections_a = [
-            ("div.main-card",                "Cartelera Estelar", main_ts),
-            ("div.fight-card-prelims",       "Prelims",           prelims_ts),
-            ("div.fight-card-prelims-early", "Early Prelims",     prelims_ts),
-        ]
-        for sel, label, ts in sections_a:
-            sec = soup2.select_one(sel)
-            if sec:
-                for f in sec.select(".c-listing-fight"):
-                    fight_triples.append((f, label, ts))
-
-        # Strategy B: h3 section headers as dividers
-        if not fight_triples:
-            SECTION_LABELS = {"Main Card": ("Cartelera Estelar", main_ts),
-                              "Prelims":   ("Prelims",           prelims_ts),
-                              "Early Prelims": ("Early Prelims", prelims_ts)}
-            current_label, current_ts = "Cartelera Estelar", main_ts
-            for el in soup2.find_all(["h3", "article"]):
-                if el.name == "h3" and el.get_text(strip=True) in SECTION_LABELS:
-                    current_label, current_ts = SECTION_LABELS[el.get_text(strip=True)]
-                elif el.name == "article" and "c-listing-fight" in " ".join(el.get("class", [])):
-                    fight_triples.append((el, current_label, current_ts))
-
-        # Strategy C: all fights on page, no section info
-        if not fight_triples:
-            for f in soup2.select(".c-listing-fight"):
-                fight_triples.append((f, "Cartelera Estelar", main_ts))
-
-        for fight, label, ts in fight_triples:
-            red  = _ufc_fighter_name(fight, "red")
-            blue = _ufc_fighter_name(fight, "blue")
-            if red == "?" and blue == "?":
-                continue
-            wc_el = fight.select_one(".c-listing-fight__class-text")
-            wc = wc_el.get_text(strip=True) if wc_el else ""
-            time_clt = _utc_to_clt(ts) if ts else "TBD"
             events.append(Event(
                 competition="UFC",
                 category="us-sports",
-                home_team=red,
-                away_team=blue,
-                time_clt=time_clt,
+                home_team=fighter1,
+                away_team=fighter2,
+                time_clt=_iso_to_clt(fight_dt),
                 platform=_platform("UFC"),
-                round=f"{label} · {wc}" if wc else label,
+                round=f"{section} · {weight}" if weight else section,
             ))
 
     return events, None
