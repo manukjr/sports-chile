@@ -392,12 +392,10 @@ async def fetch_group2(date_str: str, client: httpx.AsyncClient) -> tuple[list[E
 
     nfl_url  = f"https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates={date_compact}"
     nba_url  = f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates={date_compact}"
-    mlb_url  = f"https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard?dates={date_compact}"
 
     results = await asyncio.gather(
         _espn_sport("NFL", nfl_url, "NFL", client),
         _espn_sport("NBA", nba_url, "NBA", client),
-        _espn_sport("MLB", mlb_url, "MLB", client),
         _fetch_ufc(target_date, client),
         return_exceptions=False,
     )
@@ -428,39 +426,65 @@ async def _fetch_f1(year: int, target_date: datetime.date, client: httpx.AsyncCl
         LOG.error("F1 Jolpica error: %s", exc)
         return events, f"F1 (Jolpica): {exc}"
 
+    # Each session key in the Jolpica response → Spanish display label.
+    # SprintQualifying (pre-2023 name) and SprintShootout (2023+ name) are both included.
+    SESSION_KEYS: list[tuple[str, str]] = [
+        ("FirstPractice",    "Práctica 1"),
+        ("SecondPractice",   "Práctica 2"),
+        ("ThirdPractice",    "Práctica 3"),
+        ("SprintShootout",   "Sprint Clasificación"),
+        ("SprintQualifying", "Sprint Clasificación"),
+        ("Sprint",           "Sprint"),
+        ("Qualifying",       "Clasificación"),
+        # Main race handled separately below
+    ]
+
+    def _session_time(date_s: str, time_s: str) -> str:
+        """Convert Jolpica date + time strings to CLT 'HH:MM'."""
+        if not time_s:
+            return "TBD"
+        try:
+            dt = datetime.strptime(
+                f"{date_s}T{time_s.rstrip('Z')}+00:00", "%Y-%m-%dT%H:%M:%S%z"
+            )
+            return dt.astimezone(CLT).strftime("%H:%M")
+        except ValueError:
+            return "TBD"
+
     races = data.get("MRData", {}).get("RaceTable", {}).get("Races", [])
     for race in races:
-        race_date = race.get("date", "")
-        try:
-            rd = datetime.strptime(race_date, "%Y-%m-%d").date()
-        except ValueError:
-            continue
-
-        # Include race day and ±1 day (practice/quali)
-        if abs((rd - target_date).days) > 1:
-            continue
-
         round_num = race.get("round", "")
         race_name = race.get("raceName", "Gran Premio")
-        circuit = race.get("Circuit", {}).get("circuitName", "")
-        time_str = race.get("time", "")
-        if time_str:
-            # time is "HH:MM:SSZ" format
-            dummy_dt = datetime.strptime(f"{race_date}T{time_str.rstrip('Z')}+00:00", "%Y-%m-%dT%H:%M:%S%z")
-            time_clt = dummy_dt.astimezone(CLT).strftime("%H:%M")
-        else:
-            time_clt = "TBD"
+        circuit   = race.get("Circuit", {}).get("circuitName", "")
 
-        label = "Carrera" if rd == target_date else ("Clasificación" if (rd - target_date).days == 1 else "Práctica")
-        events.append(Event(
-            competition="F1",
-            category="motor",
-            home_team=race_name,
-            away_team=circuit,
-            time_clt=time_clt,
-            platform=_platform("F1"),
-            round=f"Ronda {round_num} — {label}",
-        ))
+        # Build the full list of (session_date, session_time_str, label)
+        sessions: list[tuple[str, str, str]] = []
+        for key, label in SESSION_KEYS:
+            s = race.get(key)
+            if s:
+                sessions.append((s.get("date", ""), s.get("time", ""), label))
+        # Main race
+        sessions.append((race.get("date", ""), race.get("time", ""), "Carrera"))
+
+        for s_date, s_time, label in sessions:
+            if not s_date:
+                continue
+            try:
+                session_date = datetime.strptime(s_date, "%Y-%m-%d").date()
+            except ValueError:
+                continue
+            if session_date != target_date:
+                continue  # only show sessions that actually fall on the target day
+
+            events.append(Event(
+                competition="F1",
+                category="motor",
+                home_team=race_name,
+                away_team="",
+                time_clt=_session_time(s_date, s_time),
+                platform=_platform("F1"),
+                round=f"Ronda {round_num} — {label} · {circuit}",
+            ))
 
     return events, None
 
