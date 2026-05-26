@@ -1,16 +1,7 @@
 #!/usr/bin/env python3
 """
-sports_ci.py — CI-friendly sports schedule scraper (GitHub Actions / headless).
-
-Replaces SofaScore (blocked on datacenter IPs) with ESPN's public APIs:
-  • Group 1  Football → ESPN Soccer scoreboard API   (no key)
-  • Group 4  Tennis   → ESPN Tennis scoreboard API   (no key, ATP + WTA)
-
-No external API keys required — everything runs on ESPN public endpoints
-and public scraping (UFC, F1, WEC, GT World Challenge).
-
-Usage (normally called via run_ci.py, not directly):
-    python sports_ci.py [YYYY-MM-DD]
+sports.py — Chilean sports schedule scraper
+Usage: python sports.py [YYYY-MM-DD]   (default: today CLT)
 """
 
 import asyncio
@@ -32,7 +23,7 @@ from bs4 import BeautifulSoup
 # America/Santiago handles both CLT (UTC-4, winter) and CLST (UTC-3, summer)
 # automatically — never hardcode the offset.
 CLT = ZoneInfo("America/Santiago")
-LOG = logging.getLogger("sports_ci")
+LOG = logging.getLogger("sports")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
 HEADERS = {
@@ -44,67 +35,65 @@ HEADERS = {
     "Accept-Language": "es-CL,es;q=0.9,en;q=0.8",
 }
 
-# ── ESPN Soccer API (Group 1) ─────────────────────────────────────────────────
-# Same public API family as NBA/NFL/MLB (Group 2). No key required.
-# slug → (display name, Chilean platform)
-ESPN_SOCCER_LEAGUES: dict[str, tuple[str, str]] = {
-    "uefa.champions":        ("UEFA Champions League",      "ESPN / Disney+"),
-    "uefa.europa":           ("UEFA Europa League",         "ESPN / Disney+"),
-    "eng.1":                 ("Premier League",             "ESPN / Disney+"),
-    "ita.1":                 ("Serie A Italia",             "ESPN / Disney+"),
-    "ger.1":                 ("Bundesliga",                 "ESPN / Disney+"),
-    "esp.1":                 ("La Liga",                    "ESPN / Disney+"),
-    "fra.1":                 ("Ligue 1",                    "ESPN / Disney+"),
-    "conmebol.libertadores": ("Copa Libertadores",          "Disney+ Premium"),
-    "conmebol.sudamericana": ("Copa Sudamericana",          "Disney+ Premium / DirecTV Sports"),
-    "bra.1":                 ("Brasileirao Betano",         "KICK.com"),
-    "arg.1":                 ("Liga Profesional Argentina", "ESPN / Disney+"),
-    "chi.1":                 ("Liga de Primera Chile",      "CDF"),
+# Exact filter for Group 1.
+# Key: (SofaScore tournament base name, SofaScore category name)
+#   — base name = tournament name split on "," and stripped, so
+#     "CONMEBOL Libertadores, Group A" → "CONMEBOL Libertadores"
+# Value: (display name shown in HTML, broadcaster in Chile)
+SOFASCORE_FOOTBALL_FILTER: dict[tuple[str, str], tuple[str, str]] = {
+    ("UEFA Champions League",    "Europe"):        ("UEFA Champions League",       "ESPN / Disney+"),
+    ("UEFA Europa League",       "Europe"):        ("UEFA Europa League",          "ESPN / Disney+"),
+    ("Premier League",           "England"):       ("Premier League",              "ESPN / Disney+"),
+    ("Serie A",                  "Italy"):         ("Serie A Italia",              "ESPN / Disney+"),
+    ("Bundesliga",               "Germany"):       ("Bundesliga",                  "ESPN / Disney+"),
+    ("LaLiga",                   "Spain"):         ("La Liga",                     "ESPN / Disney+"),
+    ("Ligue 1",                  "France"):        ("Ligue 1",                     "ESPN / Disney+"),
+    ("CONMEBOL Libertadores",    "South America"): ("Copa Libertadores",           "Disney+ Premium"),
+    ("CONMEBOL Sudamericana",    "South America"): ("Copa Sudamericana",           "Disney+ Premium / DirecTV Sports"),
+    ("Brasileirão Betano",       "Brazil"):        ("Brasileirao Betano",          "KICK.com"),
+    ("Liga de Primera",          "Chile"):         ("Liga de Primera Chile",       "CDF"),
+    ("Liga Profesional de Fútbol", "Argentina"):   ("Liga Profesional Argentina",  "ESPN / Disney+"),
 }
 
-
-# ── ESPN Tennis API (Group 4) ─────────────────────────────────────────────────
-# Same public API family as football (Group 1) and US sports (Group 2). No key.
-ESPN_TENNIS_BASE = "https://site.api.espn.com/apis/site/v2/sports/tennis"
-
-# ── Broadcaster maps ──────────────────────────────────────────────────────────
 BROADCASTER_MAP = {
-    "NFL":               "ESPN / Disney+",
-    "NBA":               "ESPN / Disney+",   # fallback — overridden per game
-    "MLB":               "ESPN / Disney+",   # fallback — overridden per game
-    "UFC":               "Paramount+",
-    "F1":                "ESPN / Disney+ Premium",
-    "WEC":               "YouTube (FIA WEC oficial)",
+    "NFL":              "ESPN / Disney+",
+    "NBA":              "ESPN / Disney+",   # fallback only — overridden per game
+    "NFL":              "ESPN / Disney+",   # fallback only — overridden per game
+    "MLB":              "ESPN / Disney+",   # fallback only — overridden per game
+    "UFC":              "Paramount+",
+    "F1":               "ESPN / Disney+ Premium",
+    "WEC":              "YouTube (FIA WEC oficial)",
     "GT World Challenge": "YouTube (SRO Motorsports oficial)",
-    "ATP":               "ESPN / Disney+",
-    "WTA":               "ESPN / Disney+",
+    "ATP":              "ESPN / Disney+",
 }
 
 # Maps US broadcast network names (from ESPN API) to Chilean platforms.
-# Warner Bros. Discovery holds NBA/LatAm rights for NBC/Peacock games.
+# Warner Bros. Discovery holds NBA/LatAm rights for NBC/Peacock games
+# (TNT lost US rights but WBD kept international). ESPN/ABC/CBS/FOX stay
+# with ESPN LatAm. Amazon TNF is Amazon everywhere.
 ESPN_NETWORK_TO_CHILE: dict[str, str] = {
     # Disney / ESPN group
-    "ESPN":        "ESPN / Disney+",
-    "ESPN2":       "ESPN / Disney+",
-    "ESPNU":       "ESPN / Disney+",
-    "ABC":         "ESPN / Disney+",
+    "ESPN":         "ESPN / Disney+",
+    "ESPN2":        "ESPN / Disney+",
+    "ESPNU":        "ESPN / Disney+",
+    "ABC":          "ESPN / Disney+",
     # Warner / TNT group  (NBC & Peacock → WBD holds LatAm NBA deal)
-    "NBC":         "TNT Sports / HBO Max",
-    "Peacock":     "TNT Sports / HBO Max",
-    "TNT":         "TNT Sports / HBO Max",
-    "TBS":         "TNT Sports / HBO Max",
-    "truTV":       "TNT Sports / HBO Max",
+    "NBC":          "TNT Sports / HBO Max",
+    "Peacock":      "TNT Sports / HBO Max",
+    "TNT":          "TNT Sports / HBO Max",
+    "TBS":          "TNT Sports / HBO Max",
+    "truTV":        "TNT Sports / HBO Max",
     # Amazon
-    "Prime Video": "Amazon Prime Video",
-    "Amazon":      "Amazon Prime Video",
+    "Prime Video":  "Amazon Prime Video",
+    "Amazon":       "Amazon Prime Video",
     # NFL-specific national nets → ESPN LatAm carries them
-    "CBS":         "ESPN / Disney+",
-    "FOX":         "ESPN / Disney+",
-    "FS1":         "ESPN / Disney+",
-    "NFL Network": "ESPN / Disney+",
+    "CBS":          "ESPN / Disney+",
+    "FOX":          "ESPN / Disney+",
+    "FS1":          "ESPN / Disney+",
+    "NFL Network":  "ESPN / Disney+",
     # MLB national nets
-    "MLB Network": "ESPN / Disney+",
-    "MLB.TV":      "MLB.TV",
+    "MLB Network":  "ESPN / Disney+",
+    "MLB.TV":       "MLB.TV",
 }
 
 CATEGORY_COLORS = {
@@ -151,93 +140,66 @@ def _iso_to_clt(iso: str) -> str:
         return "??:??"
 
 
+
 # ---------------------------------------------------------------------------
-# GROUP 1 — Fútbol Europeo & Sudamericano  (ESPN Soccer public API)
+# GROUP 1 — Fútbol Europeo & Sudamericano  (SofaScore)
 # ---------------------------------------------------------------------------
 
-async def _espn_soccer(
-    slug: str,
-    display_name: str,
-    platform: str,
-    date_compact: str,
-    client: httpx.AsyncClient,
-) -> tuple[list[Event], str | None]:
-    """Fetch one league's fixtures from ESPN's public soccer scoreboard API."""
-    url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{slug}/scoreboard"
+async def fetch_group1(date_str: str, client: httpx.AsyncClient) -> tuple[list[Event], list[str]]:
+    """Fetch football events from SofaScore public API."""
+    url = f"https://api.sofascore.com/api/v1/sport/football/scheduled-events/{date_str}"
+    errors: list[str] = []
+    events: list[Event] = []
+
     try:
-        r = await client.get(url, params={"dates": date_compact}, headers=HEADERS)
-        # ESPN returns 400/404 for leagues with no coverage — treat as empty, not error
-        if r.status_code in (400, 404):
-            return [], None
+        r = await client.get(url, headers={**HEADERS, "Referer": "https://www.sofascore.com/"})
         r.raise_for_status()
         data = r.json()
     except Exception as exc:
-        LOG.error("ESPN soccer %s error: %s", slug, exc)
-        return [], f"{display_name} (ESPN soccer): {exc}"
+        LOG.error("Group1 SofaScore error: %s", exc)
+        errors.append(f"Fútbol (SofaScore): {exc}")
+        return events, errors
 
-    events: list[Event] = []
-    for game in data.get("events", []):
-        date_iso = game.get("date", "")
-        time_clt = _iso_to_clt(date_iso)
-        status   = game.get("status", {}).get("type", {}).get("description", "")
+    target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
 
-        # Extract home/away from the competitors array (more reliable than splitting name)
-        home_t = away_t = ""
-        us_networks: list[str] = []
-        for comp in game.get("competitions", []):
-            for competitor in comp.get("competitors", []):
-                team_name = competitor.get("team", {}).get("displayName", "")
-                if competitor.get("homeAway") == "home":
-                    home_t = team_name
-                elif competitor.get("homeAway") == "away":
-                    away_t = team_name
-            for bc in comp.get("broadcasts", []):
-                us_networks.extend(bc.get("names", []))
+    for ev in data.get("events", []):
+        tourn = ev.get("tournament", {})
+        raw_name = tourn.get("name", "")
+        category_name = tourn.get("category", {}).get("name", "")
 
-        # Resolve US broadcast network → Chilean platform (same logic as Group 2)
-        resolved_platform = platform
-        for net in us_networks:
-            mapped = ESPN_NETWORK_TO_CHILE.get(net)
-            if mapped:
-                resolved_platform = mapped
-                break
+        # Normalise: strip stage suffix ("UEFA Champions League, Knockout stage" → "UEFA Champions League")
+        base_name = raw_name.split(",")[0].strip()
 
-        # Round info lives inside league node
-        round_info = (
-            game.get("season", {}).get("slug", "")
-            or status
-        )
+        key = (base_name, category_name)
+        if key not in SOFASCORE_FOOTBALL_FILTER:
+            continue
+
+        display_comp, platform = SOFASCORE_FOOTBALL_FILTER[key]
+        home = ev.get("homeTeam", {}).get("name", "TBD")
+        away = ev.get("awayTeam", {}).get("name", "TBD")
+        start_ts = ev.get("startTimestamp")
+
+        # SofaScore groups events by matchday, so the response for date X can include
+        # events whose actual kick-off (in CLT) falls on a different day. Drop those.
+        if start_ts:
+            event_date_clt = datetime.fromtimestamp(start_ts, tz=timezone.utc).astimezone(CLT).date()
+            if event_date_clt != target_date:
+                continue
+
+        time_clt = _utc_to_clt(start_ts) if start_ts else "TBD"
+        round_info = ev.get("roundInfo", {}).get("name", "")
 
         events.append(Event(
-            competition=display_name,
+            competition=display_comp,
             category="soccer",
-            home_team=home_t or "TBD",
-            away_team=away_t or "TBD",
+            home_team=home,
+            away_team=away,
             time_clt=time_clt,
-            platform=resolved_platform,
+            platform=platform,
             round=round_info,
         ))
 
-    return events, None
-
-
-async def fetch_group1(date_str: str, client: httpx.AsyncClient) -> tuple[list[Event], list[str]]:
-    """Fetch football fixtures from ESPN's public soccer API for all configured leagues."""
-    date_compact = date_str.replace("-", "")
-    tasks = [
-        _espn_soccer(slug, name, platform, date_compact, client)
-        for slug, (name, platform) in ESPN_SOCCER_LEAGUES.items()
-    ]
-    results = await asyncio.gather(*tasks, return_exceptions=False)
-
-    all_events: list[Event] = []
-    errors: list[str] = []
-    for evs, err in results:
-        all_events.extend(evs)
-        if err:
-            errors.append(err)
-
-    return all_events, errors
+    return events, errors
 
 
 # ---------------------------------------------------------------------------
@@ -262,6 +224,7 @@ async def _espn_sport(
 
     for game in data.get("events", []):
         name = game.get("name", "")
+        # ESPN event name is "Team A at Team B" or "Team A vs Team B"
         if " at " in name:
             away_t, home_t = name.split(" at ", 1)
         elif " vs " in name:
@@ -286,7 +249,7 @@ async def _espn_sport(
                 platform = mapped
                 break   # use the first recognised network
 
-        # Annotate with US network for transparency
+        # Annotate with US network for transparency (e.g. "TNT Sports / HBO Max (NBC)")
         if us_networks:
             known = [n for n in us_networks if n in ESPN_NETWORK_TO_CHILE]
             if known:
@@ -325,6 +288,7 @@ async def _fetch_ufc(target_date: datetime.date, client: httpx.AsyncClient) -> t
         r = await client.get("https://www.ufc.com/events", headers=HEADERS, follow_redirects=True)
         r.raise_for_status()
         soup = BeautifulSoup(r.text, "lxml")
+        base_url = str(r.url).rstrip("/").rsplit("/", 1)[0]  # e.g. https://www.ufcespanol.com
     except Exception as exc:
         LOG.error("UFC scrape error: %s", exc)
         return events, f"UFC (ufc.com): {exc}"
@@ -344,6 +308,7 @@ async def _fetch_ufc(target_date: datetime.date, client: httpx.AsyncClient) -> t
         if event_date_clt != target_date:
             continue
 
+        # Also grab prelims timestamp for its CLT time
         pre_ts_str = date_el.get("data-prelims-card-timestamp", "")
         try:
             prelims_ts = int(pre_ts_str)
@@ -366,6 +331,9 @@ async def _fetch_ufc(target_date: datetime.date, client: httpx.AsyncClient) -> t
             LOG.error("UFC detail page error: %s", exc)
             continue
 
+        # Build a list of (fight_element, section_label, timestamp) triples.
+        # UFC pages use different structures per event, so we try three strategies
+        # in order and stop at the first one that yields any fights.
         fight_triples: list[tuple] = []
 
         # Strategy A: explicit div wrappers (most detailed events)
@@ -382,11 +350,9 @@ async def _fetch_ufc(target_date: datetime.date, client: httpx.AsyncClient) -> t
 
         # Strategy B: h3 section headers as dividers
         if not fight_triples:
-            SECTION_LABELS = {
-                "Main Card":    ("Cartelera Estelar", main_ts),
-                "Prelims":      ("Prelims",           prelims_ts),
-                "Early Prelims":("Early Prelims",     prelims_ts),
-            }
+            SECTION_LABELS = {"Main Card": ("Cartelera Estelar", main_ts),
+                              "Prelims":   ("Prelims",           prelims_ts),
+                              "Early Prelims": ("Early Prelims", prelims_ts)}
             current_label, current_ts = "Cartelera Estelar", main_ts
             for el in soup2.find_all(["h3", "article"]):
                 if el.name == "h3" and el.get_text(strip=True) in SECTION_LABELS:
@@ -422,14 +388,16 @@ async def _fetch_ufc(target_date: datetime.date, client: httpx.AsyncClient) -> t
 
 async def fetch_group2(date_str: str, client: httpx.AsyncClient) -> tuple[list[Event], list[str]]:
     date_compact = date_str.replace("-", "")
-    target_date  = datetime.strptime(date_str, "%Y-%m-%d").date()
+    target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
 
-    nfl_url = f"https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates={date_compact}"
-    nba_url = f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates={date_compact}"
+    nfl_url  = f"https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates={date_compact}"
+    nba_url  = f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates={date_compact}"
+    mlb_url  = f"https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard?dates={date_compact}"
 
     results = await asyncio.gather(
         _espn_sport("NFL", nfl_url, "NFL", client),
         _espn_sport("NBA", nba_url, "NBA", client),
+        _espn_sport("MLB", mlb_url, "MLB", client),
         _fetch_ufc(target_date, client),
         return_exceptions=False,
     )
@@ -460,70 +428,46 @@ async def _fetch_f1(year: int, target_date: datetime.date, client: httpx.AsyncCl
         LOG.error("F1 Jolpica error: %s", exc)
         return events, f"F1 (Jolpica): {exc}"
 
-    # Each session key in the Jolpica response → Spanish display label.
-    # SprintQualifying (pre-2023 name) and SprintShootout (2023+ name) are both included.
-    SESSION_KEYS: list[tuple[str, str]] = [
-        ("FirstPractice",    "Práctica 1"),
-        ("SecondPractice",   "Práctica 2"),
-        ("ThirdPractice",    "Práctica 3"),
-        ("SprintShootout",   "Sprint Clasificación"),
-        ("SprintQualifying", "Sprint Clasificación"),
-        ("Sprint",           "Sprint"),
-        ("Qualifying",       "Clasificación"),
-        # Main race is handled separately below
-    ]
-
-    def _session_time(date_s: str, time_s: str) -> str:
-        """Convert Jolpica date + time strings to CLT 'HH:MM'."""
-        if not time_s:
-            return "TBD"
-        try:
-            dt = datetime.strptime(
-                f"{date_s}T{time_s.rstrip('Z')}+00:00", "%Y-%m-%dT%H:%M:%S%z"
-            )
-            return dt.astimezone(CLT).strftime("%H:%M")
-        except ValueError:
-            return "TBD"
-
     races = data.get("MRData", {}).get("RaceTable", {}).get("Races", [])
     for race in races:
+        race_date = race.get("date", "")
+        try:
+            rd = datetime.strptime(race_date, "%Y-%m-%d").date()
+        except ValueError:
+            continue
+
+        # Include race day and ±1 day (practice/quali)
+        if abs((rd - target_date).days) > 1:
+            continue
+
         round_num = race.get("round", "")
         race_name = race.get("raceName", "Gran Premio")
-        circuit   = race.get("Circuit", {}).get("circuitName", "")
+        circuit = race.get("Circuit", {}).get("circuitName", "")
+        time_str = race.get("time", "")
+        if time_str:
+            # time is "HH:MM:SSZ" format
+            dummy_dt = datetime.strptime(f"{race_date}T{time_str.rstrip('Z')}+00:00", "%Y-%m-%dT%H:%M:%S%z")
+            time_clt = dummy_dt.astimezone(CLT).strftime("%H:%M")
+        else:
+            time_clt = "TBD"
 
-        # Build the full list of (session_date, session_time_str, label)
-        sessions: list[tuple[str, str, str]] = []
-        for key, label in SESSION_KEYS:
-            s = race.get(key)
-            if s:
-                sessions.append((s.get("date", ""), s.get("time", ""), label))
-        # Main race
-        sessions.append((race.get("date", ""), race.get("time", ""), "Carrera"))
-
-        for s_date, s_time, label in sessions:
-            if not s_date:
-                continue
-            try:
-                session_date = datetime.strptime(s_date, "%Y-%m-%d").date()
-            except ValueError:
-                continue
-            if session_date != target_date:
-                continue  # only show sessions that actually fall on the target day
-
-            events.append(Event(
-                competition="F1",
-                category="motor",
-                home_team=race_name,
-                away_team="",
-                time_clt=_session_time(s_date, s_time),
-                platform=_platform("F1"),
-                round=f"Ronda {round_num} — {label} · {circuit}",
-            ))
+        label = "Carrera" if rd == target_date else ("Clasificación" if (rd - target_date).days == 1 else "Práctica")
+        events.append(Event(
+            competition="F1",
+            category="motor",
+            home_team=race_name,
+            away_team=circuit,
+            time_clt=time_clt,
+            platform=_platform("F1"),
+            round=f"Ronda {round_num} — {label}",
+        ))
 
     return events, None
 
 
+# ---------------------------------------------------------------------------
 # 3-letter uppercase month abbreviations used by gt-world-challenge-europe.com
+# ---------------------------------------------------------------------------
 _GT_MONTH_ABBR = {
     "JAN": 1, "FEB": 2, "MAR": 3, "APR": 4, "MAY": 5, "JUN": 6,
     "JUL": 7, "AUG": 8, "SEP": 9, "OCT": 10, "NOV": 11, "DEC": 12,
@@ -545,6 +489,7 @@ async def _fetch_gt_world_challenge(
         return events, f"GT World Challenge: {exc}"
 
     def _parse_gt_date(container) -> date | None:
+        """Extract a date from a calendar__date-start or __date-end div."""
         day_el   = container.select_one(".calendar__date-number")
         month_el = container.select_one(".calendar__date-month")
         year_el  = container.select_one(".calendar__date-year")
@@ -580,10 +525,7 @@ async def _fetch_gt_world_challenge(
             away_team="",
             time_clt="TBD",
             platform=_platform("GT World Challenge"),
-            round=(
-                f"{start.strftime('%d %b')}–{end.strftime('%d %b %Y')}"
-                if end and end != start else start.strftime("%d %b %Y")
-            ),
+            round=f"{start.strftime('%d %b')}–{end.strftime('%d %b %Y')}" if end and end != start else start.strftime("%d %b %Y"),
         ))
 
     return events, None
@@ -602,6 +544,7 @@ async def _fetch_wec(
     events: list[Event] = []
     year = target_date.year
 
+    # Step 1 — collect race URLs for the current year
     try:
         r = await client.get("https://www.fiawec.com", headers=HEADERS, follow_redirects=True)
         r.raise_for_status()
@@ -610,7 +553,7 @@ async def _fetch_wec(
         LOG.error("WEC homepage error: %s", exc)
         return events, f"WEC: {exc}"
 
-    race_links = list(dict.fromkeys(
+    race_links = list(dict.fromkeys(  # preserve order, deduplicate
         f"https://www.fiawec.com{a['href']}"
         for a in soup.find_all("a", href=True)
         if _re.search(rf"/en/race/[^\"']+{year}", a["href"])
@@ -618,6 +561,7 @@ async def _fetch_wec(
     if not race_links:
         return events, None
 
+    # Step 2 — fetch all race pages in parallel
     async def _fetch_race_page(url: str) -> tuple[str, str]:
         try:
             r2 = await client.get(url, headers=HEADERS, follow_redirects=True)
@@ -627,6 +571,7 @@ async def _fetch_wec(
 
     pages = await asyncio.gather(*[_fetch_race_page(u) for u in race_links])
 
+    # Step 3 — parse JSON-LD for startDate / endDate
     for url, html in pages:
         if not html:
             continue
@@ -660,10 +605,7 @@ async def _fetch_wec(
                 away_team="",
                 time_clt="TBD",
                 platform=_platform("WEC"),
-                round=(
-                    f"{start.strftime('%d %b')}–{end.strftime('%d %b %Y')}"
-                    if end != start else start.strftime("%d %b %Y")
-                ),
+                round=f"{start.strftime('%d %b')}–{end.strftime('%d %b %Y')}" if end != start else start.strftime("%d %b %Y"),
             ))
             break  # one entry per race page
 
@@ -692,99 +634,63 @@ async def fetch_group3(date_str: str, client: httpx.AsyncClient) -> tuple[list[E
 
 
 # ---------------------------------------------------------------------------
-# GROUP 4 — ATP & WTA Tennis  (ESPN public tennis scoreboard API)
+# GROUP 4 — ATP Tennis  (via SofaScore — same API as Group 1)
 # ---------------------------------------------------------------------------
 
-async def _fetch_espn_tennis(
-    tour_slug: str,    # "atp" or "wta"
-    label: str,        # "ATP" or "WTA"
-    singles_key: str,  # "Men's Singles" or "Women's Singles"
-    date_str: str,
-    client: httpx.AsyncClient,
-) -> tuple[list[Event], str | None]:
-    """
-    Fetch tennis matches for one tour from ESPN's public scoreboard API.
-
-    ESPN returns one 'event' per tournament (e.g. Roland Garros, Hamburg Open).
-    Each event contains 'groupings' split by gender/category.
-    We filter to the correct singles grouping and to matches on target_date only.
-
-    Grand Slams: shown as one summary row (100+ matches/day — individual listing is noise).
-    Other tournaments: individual match rows, capped at 10 per tournament.
-    """
-    url = f"{ESPN_TENNIS_BASE}/{tour_slug}/scoreboard"
-    try:
-        r = await client.get(url, params={"dates": date_str.replace("-", "")}, headers=HEADERS)
-        if r.status_code in (400, 404):
-            return [], None
-        r.raise_for_status()
-        data = r.json()
-    except Exception as exc:
-        LOG.error("ESPN tennis %s error: %s", label, exc)
-        return [], f"Tennis {label} (ESPN): {exc}"
-
-    platform = _platform(label)
-    events: list[Event] = []
-
-    for ev in data.get("events", []):
-        tourn_name = ev.get("name", "")
-        is_major   = ev.get("major", False)
-
-        for grp in ev.get("groupings", []):
-            grp_name = grp.get("grouping", {}).get("displayName", "")
-            if grp_name != singles_key:
-                continue  # skip doubles, mixed, opposite gender
-
-            # Keep only matches that start today and are not yet Final
-            today_comps = [
-                c for c in grp.get("competitions", [])
-                if date_str in c.get("date", "")
-                and c.get("status", {}).get("type", {}).get("description", "") != "Final"
-            ]
-            if not today_comps:
-                continue
-
-            # Grand Slams get 6 match rows; regular tournaments get 10.
-            # Both use the same individual-match format — no more "X partidos programados".
-            cap = 6 if is_major else 10
-            for c in today_comps[:cap]:
-                competitors = c.get("competitors", [])
-                home = next(
-                    (x.get("athlete", {}).get("displayName", "?")
-                     for x in competitors if x.get("homeAway") == "home"), "TBD"
-                )
-                away = next(
-                    (x.get("athlete", {}).get("displayName", "?")
-                     for x in competitors if x.get("homeAway") == "away"), "TBD"
-                )
-                court = c.get("venue", {}).get("court", "")
-                events.append(Event(
-                    competition=f"{label} — {tourn_name}",
-                    category="other",
-                    home_team=home,
-                    away_team=away,
-                    time_clt=_iso_to_clt(c.get("date", "")),
-                    platform=platform,
-                    round=court,
-                ))
-
-    return events, None
+# SofaScore tournament category IDs for ATP events
+_ATP_KEYWORDS = ["atp", "grand slam", "masters", "wimbledon", "roland garros", "us open", "australian open"]
 
 
 async def fetch_group4(date_str: str, client: httpx.AsyncClient) -> tuple[list[Event], list[str]]:
-    """Fetch ATP and WTA tennis from ESPN's public tennis scoreboard API. No key required."""
-    results = await asyncio.gather(
-        _fetch_espn_tennis("atp", "ATP", "Men's Singles",   date_str, client),
-        _fetch_espn_tennis("wta", "WTA", "Women's Singles", date_str, client),
-        return_exceptions=False,
-    )
-    all_events: list[Event] = []
+    """Fetch ATP tennis events from SofaScore public API."""
+    url = f"https://api.sofascore.com/api/v1/sport/tennis/scheduled-events/{date_str}"
+    events: list[Event] = []
     errors: list[str] = []
-    for evs, err in results:
-        all_events.extend(evs)
-        if err:
-            errors.append(err)
-    return all_events, errors
+
+    try:
+        r = await client.get(url, headers={**HEADERS, "Referer": "https://www.sofascore.com/"})
+        r.raise_for_status()
+        data = r.json()
+    except Exception as exc:
+        LOG.error("Group4 SofaScore Tennis error: %s", exc)
+        errors.append(f"ATP Tennis (SofaScore): {exc}")
+        return events, errors
+
+    seen_tournaments: set[str] = set()
+
+    for ev in data.get("events", []):
+        tourn = ev.get("tournament", {})
+        tourn_name = tourn.get("name", "")
+        category = tourn.get("category", {}).get("name", "")
+
+        # Keep only ATP (men's) events, filter out WTA / ITF / doubles qualifying noise
+        combined = f"{tourn_name} {category}".lower()
+        if not any(kw in combined for kw in _ATP_KEYWORDS):
+            continue
+        # Skip doubles and qualifying rounds for readability
+        if any(skip in tourn_name.lower() for skip in ["doubles", "qualifying", "qual."]):
+            continue
+
+        home = ev.get("homeTeam", {}).get("name", "")
+        away = ev.get("awayTeam", {}).get("name", "")
+        start_ts = ev.get("startTimestamp")
+        time_clt = _utc_to_clt(start_ts) if start_ts else "TBD"
+        round_info = ev.get("roundInfo", {}).get("name", "")
+
+        # Deduplicate: same tournament shown once as summary if >5 matches
+        if tourn_name not in seen_tournaments or len(events) < 20:
+            seen_tournaments.add(tourn_name)
+            events.append(Event(
+                competition=f"ATP — {tourn_name}",
+                category="other",
+                home_team=home,
+                away_team=away,
+                time_clt=time_clt,
+                platform=_platform("ATP"),
+                round=round_info,
+            ))
+
+    return events, errors
 
 
 # ---------------------------------------------------------------------------
@@ -803,7 +709,7 @@ DAYS_ES = {
 
 
 def _date_es(d: datetime.date) -> str:
-    day_name   = DAYS_ES[d.weekday()]
+    day_name = DAYS_ES[d.weekday()]
     month_name = MONTHS_ES[d.month]
     return f"{day_name}, {d.day} de {month_name} de {d.year}"
 
@@ -811,7 +717,7 @@ def _date_es(d: datetime.date) -> str:
 def generate_html(events: list[Event], date_str: str, errors: list[str]) -> str:
     target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     date_es = _date_es(target_date)
-    total   = len(events)
+    total = len(events)
 
     def color(ev: Event) -> str:
         return CATEGORY_COLORS.get(ev["category"], "#9b5de5")
@@ -823,7 +729,7 @@ def generate_html(events: list[Event], date_str: str, errors: list[str]) -> str:
 
     rows_html = ""
     for ev in events:
-        c   = color(ev)
+        c = color(ev)
         rnd = f"<br><small style='color:#888'>{ev['round']}</small>" if ev.get("round") else ""
         rows_html += f"""
         <tr>
@@ -1018,8 +924,8 @@ def _pick_date() -> datetime.date:
             print(f"Formato inválido: '{sys.argv[1]}'. Usa YYYY-MM-DD.")
             sys.exit(1)
 
-    yesterday = today - timedelta(days=1)
-    tomorrow  = today + timedelta(days=1)
+    yesterday  = today - timedelta(days=1)
+    tomorrow   = today + timedelta(days=1)
 
     options = [
         ("1", f"Hoy          ({today})"),
@@ -1029,7 +935,7 @@ def _pick_date() -> datetime.date:
     ]
 
     print("\n  ╔══════════════════════════════════════╗")
-    print(  "  ║   🏟  Sports Chile — elige fecha     ║")
+    print(  "  ║   🏟  Sports Chile  3 — elige fecha   ║")
     print(  "  ╠══════════════════════════════════════╣")
     for key, label in options:
         print(f"  ║  [{key}] {label:32s}║")
@@ -1052,6 +958,7 @@ def _pick_date() -> datetime.date:
                 except ValueError:
                     print("  Formato inválido, intenta de nuevo.")
         else:
+            # Maybe they typed a date directly
             try:
                 return datetime.strptime(raw, "%Y-%m-%d").date()
             except ValueError:
@@ -1059,12 +966,21 @@ def _pick_date() -> datetime.date:
 
 
 async def main() -> None:
-    target   = _pick_date()
+    target = _pick_date()
+
     date_str = target.strftime("%Y-%m-%d")
     LOG.info("Fetching sports for %s (CLT)", date_str)
 
     timeout = httpx.Timeout(30.0, connect=10.0)
     async with httpx.AsyncClient(timeout=timeout) as client:
+        # SofaScore requires a session handshake — visit homepage first so the
+        # HTTP client carries the right session state for subsequent API calls.
+        # This is needed both locally and in headless CI environments.
+        try:
+            await client.get("https://www.sofascore.com/", headers=HEADERS, follow_redirects=True)
+        except Exception:
+            pass  # non-fatal; API calls will try anyway
+
         results = await asyncio.gather(
             fetch_group1(date_str, client),
             fetch_group2(date_str, client),
@@ -1074,7 +990,7 @@ async def main() -> None:
         )
 
     all_events: list[Event] = []
-    all_errors: list[str]   = []
+    all_errors: list[str] = []
 
     for i, result in enumerate(results, 1):
         if isinstance(result, Exception):
@@ -1085,7 +1001,7 @@ async def main() -> None:
             all_events.extend(evs)
             all_errors.extend(errs)
 
-    # Sort by CLT time; put TBD / ??:?? at the end
+    # Sort by time CLT, put TBD and ??:?? at the end
     def sort_key(ev: Event) -> str:
         t = ev["time_clt"]
         return "99:99" if t in ("TBD", "??:??") else t
@@ -1094,8 +1010,8 @@ async def main() -> None:
 
     LOG.info("Total events: %d (errors: %d)", len(all_events), len(all_errors))
 
-    html      = generate_html(all_events, date_str, all_errors)
-    out_path  = Path(f"deportes_{date_str}.html")
+    html = generate_html(all_events, date_str, all_errors)
+    out_path = Path(f"deportes_{date_str}.html")
     out_path.write_text(html, encoding="utf-8")
     LOG.info("Saved → %s", out_path.resolve())
 
