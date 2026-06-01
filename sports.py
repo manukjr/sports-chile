@@ -690,8 +690,9 @@ def generate_html(events: list[Event], date_str: str, errors: list[str]) -> str:
     for ev in events:
         c = color(ev)
         rnd = f"<br><small style='color:#888'>{ev['round']}</small>" if ev.get("round") else ""
+        comp_attr = ev['competition'].replace('&', '&amp;').replace('"', '&quot;')
         rows_html += f"""
-        <tr>
+        <tr data-category="{ev['category']}" data-competition="{comp_attr}">
           <td class="bar-cell"><span class="bar" style="background:{c}"></span></td>
           <td class="comp">{ev['competition']}{rnd}</td>
           <td class="match">{match_display(ev)}</td>
@@ -776,6 +777,76 @@ def generate_html(events: list[Event], date_str: str, errors: list[str]) -> str:
     border-radius: 50%;
     display: inline-block;
   }}
+  /* ── Filter panel ──────────────────────────────────────── */
+  .filter-panel {{
+    background: #0e0f18;
+    border: 1px solid #1e1f2e;
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }}
+  .filter-top {{
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+  }}
+  .filter-label {{
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    flex: 1;
+  }}
+  .filter-btn {{
+    font-size: 0.72rem;
+    background: none;
+    border: 1px solid #2a2b3a;
+    color: #888;
+    border-radius: 5px;
+    padding: 0.2rem 0.65rem;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }}
+  .filter-btn:hover {{ border-color: #555; color: #ccc; }}
+  .filter-groups {{ display: flex; gap: 2rem; flex-wrap: wrap; }}
+  .filter-group {{ min-width: 170px; }}
+  .filter-group-head {{
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.45rem;
+  }}
+  .filter-group-head label {{
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    user-select: none;
+  }}
+  .filter-comp-list {{
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding-left: 1.25rem;
+    border-left: 2px solid #1e1f2e;
+    margin-left: 0.4rem;
+  }}
+  .filter-comp-list label {{
+    font-size: 0.76rem;
+    color: #777;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    user-select: none;
+    transition: color 0.15s;
+  }}
+  .filter-comp-list label:hover {{ color: #bbb; }}
+  input[type="checkbox"] {{ accent-color: #00b4d8; cursor: pointer; }}
+  /* ── Table ─────────────────────────────────────────────── */
   table {{
     width: 100%;
     border-collapse: collapse;
@@ -844,8 +915,16 @@ def generate_html(events: list[Event], date_str: str, errors: list[str]) -> str:
     <div class="date-str">{date_es}</div>
   </header>
   <div class="meta">
-    <div class="count"><strong>{total}</strong> evento{"s" if total != 1 else ""}</div>
+    <div class="count"><strong id="event-count">{total}</strong> evento{"s" if total != 1 else ""}</div>
     <div class="legend">{legend_html}</div>
+  </div>
+  <div class="filter-panel">
+    <div class="filter-top">
+      <span class="filter-label">🔍 Filtrar eventos</span>
+      <button class="filter-btn" id="btn-all">Todo</button>
+      <button class="filter-btn" id="btn-none">Ninguno</button>
+    </div>
+    <div class="filter-groups" id="filter-groups"></div>
   </div>
   <table>
     <thead>
@@ -859,11 +938,108 @@ def generate_html(events: list[Event], date_str: str, errors: list[str]) -> str:
     </thead>
     <tbody>
       {rows_html or empty_msg}
+      <tr id="filter-empty" style="display:none">
+        <td colspan="5" style="text-align:center;color:#666;padding:2rem">No hay eventos para los filtros seleccionados.</td>
+      </tr>
     </tbody>
   </table>
   {error_section}
   <footer>Generado el {datetime.now(CLT).strftime("%Y-%m-%d %H:%M")} CLT</footer>
 </div>
+<script>
+(function () {{
+  const CAT_META = {{
+    'soccer':    {{ label: '⚽ Fútbol',        color: '#00b4d8' }},
+    'us-sports': {{ label: '🏀 Deportes USA',  color: '#f77f00' }},
+    'motor':     {{ label: '🏎️ Motor',          color: '#e63946' }},
+    'other':     {{ label: '🎾 Otros',           color: '#9b5de5' }},
+  }};
+
+  // Collect all data rows and build category → Set<competition> map
+  const rows = Array.from(document.querySelectorAll('tbody tr[data-category]'));
+  const catMap = {{}};
+  rows.forEach(r => {{
+    const cat = r.dataset.category, comp = r.dataset.competition;
+    if (!catMap[cat]) catMap[cat] = new Set();
+    catMap[cat].add(comp);
+  }});
+
+  // Build the filter UI dynamically from today's data
+  const container = document.getElementById('filter-groups');
+  Object.entries(CAT_META).forEach(([cat, meta]) => {{
+    if (!catMap[cat]) return;                       // category absent today
+    const comps = [...catMap[cat]].sort();
+    const g = document.createElement('div');
+    g.className = 'filter-group';
+    g.innerHTML =
+      '<div class="filter-group-head"><label>' +
+      '<input type="checkbox" class="cat-cb" data-cat="' + cat + '" checked> ' +
+      '<span style="color:' + meta.color + '">' + meta.label + '</span>' +
+      '</label></div><div class="filter-comp-list"></div>';
+    const list = g.querySelector('.filter-comp-list');
+    comps.forEach(comp => {{
+      const lbl = document.createElement('label');
+      const cb  = document.createElement('input');
+      cb.type = 'checkbox'; cb.className = 'comp-cb';
+      cb.dataset.cat = cat; cb.dataset.comp = comp; cb.checked = true;
+      lbl.appendChild(cb);
+      lbl.appendChild(document.createTextNode(' ' + comp));
+      list.appendChild(lbl);
+    }});
+    container.appendChild(g);
+  }});
+
+  // Show/hide rows and update the counter
+  function applyFilter() {{
+    const checked = new Set();
+    document.querySelectorAll('.comp-cb:checked').forEach(cb => {{
+      checked.add(cb.dataset.cat + '|||' + cb.dataset.comp);
+    }});
+    let visible = 0;
+    rows.forEach(r => {{
+      const show = checked.has(r.dataset.category + '|||' + r.dataset.competition);
+      r.style.display = show ? '' : 'none';
+      if (show) visible++;
+    }});
+    const ce = document.getElementById('event-count');
+    if (ce) ce.textContent = visible;
+    const fe = document.getElementById('filter-empty');
+    if (fe) fe.style.display = (visible === 0 && rows.length > 0) ? '' : 'none';
+  }}
+
+  // Sync the category master checkbox (checked / unchecked / indeterminate)
+  function syncCat(cat) {{
+    const cbs   = document.querySelectorAll('.comp-cb[data-cat="' + cat + '"]');
+    const n     = Array.from(cbs).filter(c => c.checked).length;
+    const catCb = document.querySelector('.cat-cb[data-cat="' + cat + '"]');
+    catCb.checked = n > 0;
+    catCb.indeterminate = n > 0 && n < cbs.length;
+  }}
+
+  // Event delegation for all checkboxes
+  document.addEventListener('change', e => {{
+    const t = e.target;
+    if (t.classList.contains('cat-cb')) {{
+      // Toggle all competitions in this category
+      document.querySelectorAll('.comp-cb[data-cat="' + t.dataset.cat + '"]')
+        .forEach(cb => {{ cb.checked = t.checked; }});
+    }} else if (t.classList.contains('comp-cb')) {{
+      syncCat(t.dataset.cat);
+    }}
+    applyFilter();
+  }});
+
+  // "Todo" / "Ninguno" buttons
+  document.getElementById('btn-all').addEventListener('click', () => {{
+    document.querySelectorAll('.cat-cb,.comp-cb').forEach(cb => {{ cb.checked = true; cb.indeterminate = false; }});
+    applyFilter();
+  }});
+  document.getElementById('btn-none').addEventListener('click', () => {{
+    document.querySelectorAll('.cat-cb,.comp-cb').forEach(cb => {{ cb.checked = false; cb.indeterminate = false; }});
+    applyFilter();
+  }});
+}})();
+</script>
 </body>
 </html>"""
 
