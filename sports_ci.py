@@ -738,6 +738,15 @@ DAYS_ES = {
     0: "lunes", 1: "martes", 2: "miércoles", 3: "jueves",
     4: "viernes", 5: "sábado", 6: "domingo",
 }
+DAYS_ES_ABBR = {
+    0: "Lun", 1: "Mar", 2: "Mié", 3: "Jue",
+    4: "Vie", 5: "Sáb", 6: "Dom",
+}
+MONTHS_ES_ABBR = {
+    1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr",
+    5: "May", 6: "Jun", 7: "Jul", 8: "Ago",
+    9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic",
+}
 
 
 def _date_es(d: datetime.date) -> str:
@@ -746,57 +755,74 @@ def _date_es(d: datetime.date) -> str:
     return f"{day_name}, {d.day} de {month_name} de {d.year}"
 
 
-def generate_html(events: list[Event], date_str: str, errors: list[str]) -> str:
-    target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-    date_es = _date_es(target_date)
-    total   = len(events)
+def generate_html(
+    events_by_date: dict[str, list[Event]],
+    errors_by_date: dict[str, list[str]],
+    today_str: str,
+) -> str:
+    """Generate a single HTML page covering a 7-day window with a date selector."""
+    dates       = sorted(events_by_date.keys())
+    today_date  = datetime.strptime(today_str, "%Y-%m-%d").date()
+    total_today = len(events_by_date.get(today_str, []))
 
-    def color(ev: Event) -> str:
-        return CATEGORY_COLORS.get(ev["category"], "#9b5de5")
+    # ── Date selector buttons ─────────────────────────────────────────────────
+    date_btns_html = ""
+    for ds in dates:
+        d       = datetime.strptime(ds, "%Y-%m-%d").date()
+        label   = f"{DAYS_ES_ABBR[d.weekday()]} {d.day} {MONTHS_ES_ABBR[d.month]}"
+        date_es = _date_es(d)
+        active  = " active" if ds == today_str else ""
+        date_btns_html += (
+            f'<button class="date-btn{active}" data-date="{ds}" data-date-es="{date_es}">'
+            f"{label}</button>\n      "
+        )
 
-    def match_display(ev: Event) -> str:
-        if ev["away_team"]:
-            return f"{ev['home_team']} <span class='vs'>vs</span> {ev['away_team']}"
-        return ev["home_team"]
-
+    # ── Table rows (all 7 days; JS controls visibility) ───────────────────────
     rows_html = ""
-    for ev in events:
-        c   = color(ev)
-        rnd = f"<br><small style='color:#888'>{ev['round']}</small>" if ev.get("round") else ""
-        comp_attr = ev['competition'].replace('&', '&amp;').replace('"', '&quot;')
-        rows_html += f"""
-        <tr data-category="{ev['category']}" data-competition="{comp_attr}">
+    for ds, events in events_by_date.items():
+        for ev in events:
+            c         = CATEGORY_COLORS.get(ev["category"], "#9b5de5")
+            rnd       = f"<br><small style='color:#888'>{ev['round']}</small>" if ev.get("round") else ""
+            comp_attr = ev["competition"].replace("&", "&amp;").replace('"', "&quot;")
+            match_str = (
+                f"{ev['home_team']} <span class='vs'>vs</span> {ev['away_team']}"
+                if ev["away_team"] else ev["home_team"]
+            )
+            rows_html += f"""
+        <tr data-date="{ds}" data-category="{ev['category']}" data-competition="{comp_attr}">
           <td class="bar-cell"><span class="bar" style="background:{c}"></span></td>
           <td class="comp">{ev['competition']}{rnd}</td>
-          <td class="match">{match_display(ev)}</td>
+          <td class="match">{match_str}</td>
           <td class="time">{ev['time_clt']}</td>
           <td class="platform">{ev['platform']}</td>
         </tr>"""
 
-    error_section = ""
-    if errors:
-        errs_li = "".join(f"<li>{e}</li>" for e in errors)
-        error_section = f"""
-        <div class="errors">
-          <strong>⚠ Fuentes con errores (datos parciales):</strong>
-          <ul>{errs_li}</ul>
-        </div>"""
+    # ── Per-date error sections ───────────────────────────────────────────────
+    error_sections_html = ""
+    for ds, errors in errors_by_date.items():
+        if errors:
+            errs_li = "".join(f"<li>{e}</li>" for e in errors)
+            vis     = "" if ds == today_str else ' style="display:none"'
+            error_sections_html += f"""
+  <div class="errors" data-date="{ds}"{vis}>
+    <strong>⚠ Fuentes con errores (datos parciales):</strong>
+    <ul>{errs_li}</ul>
+  </div>"""
 
-    legend_html = ""
+    # ── Legend ────────────────────────────────────────────────────────────────
     labels = {"soccer": "Fútbol", "us-sports": "Deportes USA", "motor": "Motor", "other": "Otros"}
+    legend_html = ""
     for cat, col in CATEGORY_COLORS.items():
         legend_html += f'<span class="legend-item"><span class="dot" style="background:{col}"></span>{labels[cat]}</span>'
 
-    empty_msg = ""
-    if total == 0:
-        empty_msg = '<tr><td colspan="5" style="text-align:center;color:#666;padding:2rem">No se encontraron eventos para esta fecha.</td></tr>'
+    today_date_es = _date_es(today_date)
 
     return f"""<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sports Schedule: Chile — {date_str}</title>
+<title>Sports Schedule: Chile — {today_str}</title>
 <style>
   *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
   body {{
@@ -849,6 +875,32 @@ def generate_html(events: list[Event], date_str: str, errors: list[str]) -> str:
     height: 10px;
     border-radius: 50%;
     display: inline-block;
+  }}
+  /* ── Date selector ──────────────────────────────────────── */
+  .date-selector {{
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+  }}
+  .date-btn {{
+    background: #0e0f18;
+    border: 1px solid #1e1f2e;
+    color: #666;
+    border-radius: 8px;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }}
+  .date-btn:hover {{ border-color: #444; color: #aaa; }}
+  .date-btn.active {{
+    background: #00b4d8;
+    border-color: #00b4d8;
+    color: #000;
+    font-weight: 700;
   }}
   /* ── Filter panel ──────────────────────────────────────── */
   .filter-panel {{
@@ -985,11 +1037,14 @@ def generate_html(events: list[Event], date_str: str, errors: list[str]) -> str:
 <div class="container">
   <header>
     <h1>🏟 Sports Schedule: Chile</h1>
-    <div class="date-str">{date_es}</div>
+    <div class="date-str" id="date-display">{today_date_es}</div>
   </header>
   <div class="meta">
-    <div class="count"><strong id="event-count">{total}</strong> evento{"s" if total != 1 else ""}</div>
+    <div class="count"><strong id="event-count">{total_today}</strong> evento{"s" if total_today != 1 else ""}</div>
     <div class="legend">{legend_html}</div>
+  </div>
+  <div class="date-selector">
+      {date_btns_html}
   </div>
   <div class="filter-panel">
     <div class="filter-top">
@@ -1010,14 +1065,14 @@ def generate_html(events: list[Event], date_str: str, errors: list[str]) -> str:
       </tr>
     </thead>
     <tbody>
-      {rows_html or empty_msg}
+      {rows_html}
       <tr id="filter-empty" style="display:none">
-        <td colspan="5" style="text-align:center;color:#666;padding:2rem">No hay eventos para los filtros seleccionados.</td>
+        <td colspan="5" style="text-align:center;color:#666;padding:2rem">No hay eventos para mostrar.</td>
       </tr>
     </tbody>
   </table>
-  {error_section}
-  <footer>Generado el {datetime.now(CLT).strftime("%Y-%m-%d %H:%M")} CLT</footer>
+  {error_sections_html}
+  <footer>Generado el {datetime.now(CLT).strftime("%Y-%m-%d %H:%M")} CLT · Ventana: {dates[0]} → {dates[-1]}</footer>
 </div>
 <script>
 (function () {{
@@ -1028,72 +1083,93 @@ def generate_html(events: list[Event], date_str: str, errors: list[str]) -> str:
     'other':     {{ label: '🎾 Otros',           color: '#9b5de5' }},
   }};
 
-  // Collect all data rows and build category → Set<competition> map
-  const rows = Array.from(document.querySelectorAll('tbody tr[data-category]'));
-  const catMap = {{}};
-  rows.forEach(r => {{
-    const cat = r.dataset.category, comp = r.dataset.competition;
-    if (!catMap[cat]) catMap[cat] = new Set();
-    catMap[cat].add(comp);
-  }});
+  let activeDate = '{today_str}';
+  const allRows  = Array.from(document.querySelectorAll('tbody tr[data-category]'));
 
-  // Build the filter UI dynamically from today's data
-  const container = document.getElementById('filter-groups');
-  Object.entries(CAT_META).forEach(([cat, meta]) => {{
-    if (!catMap[cat]) return;                       // category absent today
-    const comps = [...catMap[cat]].sort();
-    const g = document.createElement('div');
-    g.className = 'filter-group';
-    g.innerHTML =
-      '<div class="filter-group-head"><label>' +
-      '<input type="checkbox" class="cat-cb" data-cat="' + cat + '" checked> ' +
-      '<span style="color:' + meta.color + '">' + meta.label + '</span>' +
-      '</label></div><div class="filter-comp-list"></div>';
-    const list = g.querySelector('.filter-comp-list');
-    comps.forEach(comp => {{
-      const lbl = document.createElement('label');
-      const cb  = document.createElement('input');
-      cb.type = 'checkbox'; cb.className = 'comp-cb';
-      cb.dataset.cat = cat; cb.dataset.comp = comp; cb.checked = true;
-      lbl.appendChild(cb);
-      lbl.appendChild(document.createTextNode(' ' + comp));
-      list.appendChild(lbl);
+  // Build/rebuild the competition filter for the currently active date
+  function buildFilter() {{
+    const dayRows = allRows.filter(r => r.dataset.date === activeDate);
+    const catMap  = {{}};
+    dayRows.forEach(r => {{
+      const cat = r.dataset.category, comp = r.dataset.competition;
+      if (!catMap[cat]) catMap[cat] = new Set();
+      catMap[cat].add(comp);
     }});
-    container.appendChild(g);
-  }});
+    const container = document.getElementById('filter-groups');
+    container.innerHTML = '';
+    Object.entries(CAT_META).forEach(([cat, meta]) => {{
+      if (!catMap[cat]) return;
+      const comps = [...catMap[cat]].sort();
+      const g = document.createElement('div');
+      g.className = 'filter-group';
+      g.innerHTML =
+        '<div class="filter-group-head"><label>' +
+        '<input type="checkbox" class="cat-cb" data-cat="' + cat + '" checked> ' +
+        '<span style="color:' + meta.color + '">' + meta.label + '</span>' +
+        '</label></div><div class="filter-comp-list"></div>';
+      const list = g.querySelector('.filter-comp-list');
+      comps.forEach(comp => {{
+        const lbl = document.createElement('label');
+        const cb  = document.createElement('input');
+        cb.type = 'checkbox'; cb.className = 'comp-cb';
+        cb.dataset.cat = cat; cb.dataset.comp = comp; cb.checked = true;
+        lbl.appendChild(cb);
+        lbl.appendChild(document.createTextNode(' ' + comp));
+        list.appendChild(lbl);
+      }});
+      container.appendChild(g);
+    }});
+  }}
 
-  // Show/hide rows and update the counter
+  // Show rows matching active date + checked competitions; update counter
   function applyFilter() {{
     const checked = new Set();
     document.querySelectorAll('.comp-cb:checked').forEach(cb => {{
       checked.add(cb.dataset.cat + '|||' + cb.dataset.comp);
     }});
     let visible = 0;
-    rows.forEach(r => {{
-      const show = checked.has(r.dataset.category + '|||' + r.dataset.competition);
+    allRows.forEach(r => {{
+      const show = r.dataset.date === activeDate &&
+                   checked.has(r.dataset.category + '|||' + r.dataset.competition);
       r.style.display = show ? '' : 'none';
       if (show) visible++;
     }});
     const ce = document.getElementById('event-count');
     if (ce) ce.textContent = visible;
     const fe = document.getElementById('filter-empty');
-    if (fe) fe.style.display = (visible === 0 && rows.length > 0) ? '' : 'none';
+    if (fe) fe.style.display = (visible === 0) ? '' : 'none';
   }}
 
-  // Sync the category master checkbox (checked / unchecked / indeterminate)
+  // Sync category master checkbox state
   function syncCat(cat) {{
     const cbs   = document.querySelectorAll('.comp-cb[data-cat="' + cat + '"]');
     const n     = Array.from(cbs).filter(c => c.checked).length;
     const catCb = document.querySelector('.cat-cb[data-cat="' + cat + '"]');
+    if (!catCb) return;
     catCb.checked = n > 0;
     catCb.indeterminate = n > 0 && n < cbs.length;
   }}
 
-  // Event delegation for all checkboxes
+  // Date button clicks
+  document.querySelectorAll('.date-btn').forEach(btn => {{
+    btn.addEventListener('click', () => {{
+      document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeDate = btn.dataset.date;
+      const dd = document.getElementById('date-display');
+      if (dd) dd.textContent = btn.dataset.dateEs;
+      document.querySelectorAll('.errors[data-date]').forEach(el => {{
+        el.style.display = el.dataset.date === activeDate ? '' : 'none';
+      }});
+      buildFilter();
+      applyFilter();
+    }});
+  }});
+
+  // Checkbox event delegation
   document.addEventListener('change', e => {{
     const t = e.target;
     if (t.classList.contains('cat-cb')) {{
-      // Toggle all competitions in this category
       document.querySelectorAll('.comp-cb[data-cat="' + t.dataset.cat + '"]')
         .forEach(cb => {{ cb.checked = t.checked; }});
     }} else if (t.classList.contains('comp-cb')) {{
@@ -1111,6 +1187,10 @@ def generate_html(events: list[Event], date_str: str, errors: list[str]) -> str:
     document.querySelectorAll('.cat-cb,.comp-cb').forEach(cb => {{ cb.checked = false; cb.indeterminate = false; }});
     applyFilter();
   }});
+
+  // Initialise on page load
+  buildFilter();
+  applyFilter();
 }})();
 </script>
 </body>
@@ -1122,94 +1202,66 @@ def generate_html(events: list[Event], date_str: str, errors: list[str]) -> str:
 # ---------------------------------------------------------------------------
 
 def _pick_date() -> datetime.date:
-    """Interactive date selector. CLI arg takes priority; otherwise prompt."""
+    """Return the start date for the 7-day window.
+    CLI arg (YYYY-MM-DD) takes priority; otherwise today in CLT."""
     today = datetime.now(CLT).date()
-
     if len(sys.argv) > 1:
         try:
             return datetime.strptime(sys.argv[1], "%Y-%m-%d").date()
         except ValueError:
             print(f"Formato inválido: '{sys.argv[1]}'. Usa YYYY-MM-DD.")
             sys.exit(1)
-
-    yesterday = today - timedelta(days=1)
-    tomorrow  = today + timedelta(days=1)
-
-    options = [
-        ("1", f"Hoy          ({today})"),
-        ("2", f"Ayer         ({yesterday})"),
-        ("3", f"Mañana       ({tomorrow})"),
-        ("4", "Otra fecha   (escribe YYYY-MM-DD)"),
-    ]
-
-    print("\n  ╔══════════════════════════════════════╗")
-    print(  "  ║   🏟  Sports Chile — elige fecha     ║")
-    print(  "  ╠══════════════════════════════════════╣")
-    for key, label in options:
-        print(f"  ║  [{key}] {label:32s}║")
-    print(  "  ╚══════════════════════════════════════╝")
-
-    while True:
-        raw = input("\n  Opción [1]: ").strip() or "1"
-
-        if raw == "1":
-            return today
-        elif raw == "2":
-            return yesterday
-        elif raw == "3":
-            return tomorrow
-        elif raw == "4":
-            while True:
-                d = input("  Fecha (YYYY-MM-DD): ").strip()
-                try:
-                    return datetime.strptime(d, "%Y-%m-%d").date()
-                except ValueError:
-                    print("  Formato inválido, intenta de nuevo.")
-        else:
-            try:
-                return datetime.strptime(raw, "%Y-%m-%d").date()
-            except ValueError:
-                print("  Opción no válida. Elige 1, 2, 3 o 4.")
+    return today
 
 
 async def main() -> None:
-    target   = _pick_date()
-    date_str = target.strftime("%Y-%m-%d")
-    LOG.info("Fetching sports for %s (CLT)", date_str)
+    today     = _pick_date()
+    today_str = today.strftime("%Y-%m-%d")
+    dates     = [today + timedelta(days=i) for i in range(7)]
+
+    LOG.info("Fetching 7-day window: %s → %s (CLT)", dates[0], dates[-1])
 
     timeout = httpx.Timeout(30.0, connect=10.0)
     async with httpx.AsyncClient(timeout=timeout) as client:
-        results = await asyncio.gather(
-            fetch_group1(date_str, client),
-            fetch_group2(date_str, client),
-            fetch_group3(date_str, client),
-            fetch_group4(date_str, client),
-            return_exceptions=True,
-        )
+        # Fetch all 4 groups for all 7 days concurrently (28 tasks total)
+        day_tasks = [
+            asyncio.gather(
+                fetch_group1(d.strftime("%Y-%m-%d"), client),
+                fetch_group2(d.strftime("%Y-%m-%d"), client),
+                fetch_group3(d.strftime("%Y-%m-%d"), client),
+                fetch_group4(d.strftime("%Y-%m-%d"), client),
+                return_exceptions=True,
+            )
+            for d in dates
+        ]
+        all_day_results = await asyncio.gather(*day_tasks)
 
-    all_events: list[Event] = []
-    all_errors: list[str]   = []
+    events_by_date: dict[str, list[Event]] = {}
+    errors_by_date: dict[str, list[str]]   = {}
 
-    for i, result in enumerate(results, 1):
-        if isinstance(result, Exception):
-            LOG.error("Group %d crashed unexpectedly: %s", i, result)
-            all_errors.append(f"Grupo {i}: {result}")
-        else:
-            evs, errs = result
-            all_events.extend(evs)
-            all_errors.extend(errs)
-
-    # Sort by CLT time; put TBD / ??:?? at the end
     def sort_key(ev: Event) -> str:
         t = ev["time_clt"]
         return "99:99" if t in ("TBD", "??:??") else t
 
-    all_events.sort(key=sort_key)
+    for day, day_results in zip(dates, all_day_results):
+        ds: str = day.strftime("%Y-%m-%d")
+        day_events: list[Event] = []
+        day_errors: list[str]   = []
+        for i, result in enumerate(day_results, 1):
+            if isinstance(result, Exception):
+                LOG.error("Day %s group %d crashed: %s", ds, i, result)
+                day_errors.append(f"Grupo {i}: {result}")
+            else:
+                evs, errs = result
+                day_events.extend(evs)
+                day_errors.extend(errs)
+        day_events.sort(key=sort_key)
+        events_by_date[ds] = day_events
+        errors_by_date[ds] = day_errors
+        LOG.info("  %s: %d events, %d errors", ds, len(day_events), len(day_errors))
 
-    LOG.info("Total events: %d (errors: %d)", len(all_events), len(all_errors))
-
-    html      = generate_html(all_events, date_str, all_errors)
-    out_path  = Path(f"deportes_{date_str}.html")
+    html     = generate_html(events_by_date, errors_by_date, today_str)
+    out_path = Path(f"deportes_{today_str}.html")
     out_path.write_text(html, encoding="utf-8")
     LOG.info("Saved → %s", out_path.resolve())
 
