@@ -103,6 +103,16 @@ CATEGORY_COLORS = {
     "other":     "#9b5de5",
 }
 
+# ESPN slugs for national-team competitions (used alongside SofaScore club football)
+ESPN_NATIONAL_LEAGUES: dict[str, tuple[str, str]] = {
+    "fifa.friendly":           ("Amistoso Internacional",     "ESPN / Disney+"),
+    "conmebol.qualifier":      ("Eliminatorias CONMEBOL",     "ESPN / Disney+"),
+    "concacaf.nations.league": ("CONCACAF Nations League",    "ESPN / Disney+"),
+    "uefa.nations":            ("UEFA Nations League",        "ESPN / Disney+"),
+    "copa.america":            ("Copa América",               "ESPN / Disney+"),
+    "fifa.world":              ("Copa del Mundo FIFA",        "ESPN / Disney+"),
+}
+
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -142,8 +152,62 @@ def _iso_to_clt(iso: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# GROUP 1 — Fútbol Europeo & Sudamericano  (SofaScore)
+# GROUP 1 — Fútbol  (club: SofaScore · selecciones: ESPN)
 # ---------------------------------------------------------------------------
+
+async def _espn_soccer(
+    slug: str,
+    display_name: str,
+    platform: str,
+    date_compact: str,
+    client: httpx.AsyncClient,
+) -> tuple[list[Event], str | None]:
+    """Fetch one league's fixtures from ESPN's public soccer scoreboard API."""
+    url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{slug}/scoreboard"
+    try:
+        r = await client.get(url, params={"dates": date_compact}, headers=HEADERS)
+        if r.status_code in (400, 404):
+            return [], None
+        r.raise_for_status()
+        data = r.json()
+    except Exception as exc:
+        LOG.error("ESPN soccer %s error: %s", slug, exc)
+        return [], f"{display_name} (ESPN soccer): {exc}"
+
+    events: list[Event] = []
+    for game in data.get("events", []):
+        date_iso = game.get("date", "")
+        time_clt = _iso_to_clt(date_iso)
+        status   = game.get("status", {}).get("type", {}).get("description", "")
+        home_t = away_t = ""
+        us_networks: list[str] = []
+        for comp in game.get("competitions", []):
+            for competitor in comp.get("competitors", []):
+                team_name = competitor.get("team", {}).get("displayName", "")
+                if competitor.get("homeAway") == "home":
+                    home_t = team_name
+                elif competitor.get("homeAway") == "away":
+                    away_t = team_name
+            for bc in comp.get("broadcasts", []):
+                us_networks.extend(bc.get("names", []))
+        resolved_platform = platform
+        for net in us_networks:
+            mapped = ESPN_NETWORK_TO_CHILE.get(net)
+            if mapped:
+                resolved_platform = mapped
+                break
+        round_info = game.get("season", {}).get("slug", "") or status
+        events.append(Event(
+            competition=display_name,
+            category="soccer",
+            home_team=home_t or "TBD",
+            away_team=away_t or "TBD",
+            time_clt=time_clt,
+            platform=resolved_platform,
+            round=round_info,
+        ))
+    return events, None
+
 
 async def fetch_group1(date_str: str, client: httpx.AsyncClient) -> tuple[list[Event], list[str]]:
     """Fetch football events from SofaScore public API."""
@@ -198,6 +262,17 @@ async def fetch_group1(date_str: str, client: httpx.AsyncClient) -> tuple[list[E
             platform=platform,
             round=round_info,
         ))
+
+    # National-team competitions via ESPN (friendlies, qualifiers, tournaments)
+    date_compact = date_str.replace("-", "")
+    national_tasks = [
+        _espn_soccer(slug, name, platform, date_compact, client)
+        for slug, (name, platform) in ESPN_NATIONAL_LEAGUES.items()
+    ]
+    for evs, err in await asyncio.gather(*national_tasks):
+        events.extend(evs)
+        if err:
+            errors.append(err)
 
     return events, errors
 
@@ -327,10 +402,12 @@ async def fetch_group2(date_str: str, client: httpx.AsyncClient) -> tuple[list[E
 
     nfl_url  = f"https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates={date_compact}"
     nba_url  = f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates={date_compact}"
+    mlb_url  = f"https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard?dates={date_compact}"
 
     results = await asyncio.gather(
         _espn_sport("NFL", nfl_url, "NFL", client),
         _espn_sport("NBA", nba_url, "NBA", client),
+        _espn_sport("MLB", mlb_url, "MLB", client),
         _fetch_ufc(target_date, client),
         return_exceptions=False,
     )

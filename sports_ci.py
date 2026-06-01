@@ -60,6 +60,13 @@ ESPN_SOCCER_LEAGUES: dict[str, tuple[str, str]] = {
     "bra.1":                 ("Brasileirao Betano",         "KICK.com"),
     "arg.1":                 ("Liga Profesional Argentina", "ESPN / Disney+"),
     "chi.1":                 ("Liga de Primera Chile",      "CDF"),
+    # National teams
+    "fifa.friendly":           ("Amistoso Internacional",     "ESPN / Disney+"),
+    "conmebol.qualifier":      ("Eliminatorias CONMEBOL",     "ESPN / Disney+"),
+    "concacaf.nations.league": ("CONCACAF Nations League",    "ESPN / Disney+"),
+    "uefa.nations":            ("UEFA Nations League",        "ESPN / Disney+"),
+    "copa.america":            ("Copa América",               "ESPN / Disney+"),
+    "fifa.world":              ("Copa del Mundo FIFA",        "ESPN / Disney+"),
 }
 
 
@@ -364,10 +371,12 @@ async def fetch_group2(date_str: str, client: httpx.AsyncClient) -> tuple[list[E
 
     nfl_url = f"https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates={date_compact}"
     nba_url = f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates={date_compact}"
+    mlb_url = f"https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard?dates={date_compact}"
 
     results = await asyncio.gather(
         _espn_sport("NFL", nfl_url, "NFL", client),
         _espn_sport("NBA", nba_url, "NBA", client),
+        _espn_sport("MLB", mlb_url, "MLB", client),
         _fetch_ufc(target_date, client),
         return_exceptions=False,
     )
