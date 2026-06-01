@@ -158,6 +158,15 @@ def _iso_to_clt(iso: str) -> str:
         return "??:??"
 
 
+def _iso_to_clt_date(iso: str) -> str:
+    """ISO-8601 string → 'YYYY-MM-DD' in CLT. Falls back to ''."""
+    try:
+        dt = datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone(CLT)
+        return dt.strftime("%Y-%m-%d")
+    except Exception:
+        return ""
+
+
 # ---------------------------------------------------------------------------
 # GROUP 1 — Fútbol Europeo & Sudamericano  (ESPN Soccer public API)
 # ---------------------------------------------------------------------------
@@ -682,10 +691,10 @@ async def _fetch_espn_tennis(
             if grp_name != singles_key:
                 continue  # skip doubles, mixed, opposite gender
 
-            # Keep only matches that start today and are not yet Final
+            # Keep only matches whose CLT date matches the target and aren't Final yet
             today_comps = [
                 c for c in grp.get("competitions", [])
-                if date_str in c.get("date", "")
+                if _iso_to_clt_date(c.get("date", "")) == date_str
                 and c.get("status", {}).get("type", {}).get("description", "") != "Final"
             ]
             if not today_comps:

@@ -692,6 +692,7 @@ async def fetch_group4(date_str: str, client: httpx.AsyncClient) -> tuple[list[E
         errors.append(f"ATP Tennis (SofaScore): {exc}")
         return events, errors
 
+    target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     seen_tournaments: set[str] = set()
 
     for ev in data.get("events", []):
@@ -710,6 +711,13 @@ async def fetch_group4(date_str: str, client: httpx.AsyncClient) -> tuple[list[E
         home = ev.get("homeTeam", {}).get("name", "")
         away = ev.get("awayTeam", {}).get("name", "")
         start_ts = ev.get("startTimestamp")
+
+        # SofaScore tennis bleeds adjacent days — drop matches not on target_date in CLT
+        if start_ts:
+            event_date_clt = datetime.fromtimestamp(start_ts, tz=timezone.utc).astimezone(CLT).date()
+            if event_date_clt != target_date:
+                continue
+
         time_clt = _utc_to_clt(start_ts) if start_ts else "TBD"
         round_info = ev.get("roundInfo", {}).get("name", "")
 
