@@ -110,7 +110,7 @@ ESPN_NATIONAL_LEAGUES: dict[str, tuple[str, str]] = {
     "concacaf.nations.league": ("CONCACAF Nations League",    "ESPN / Disney+"),
     "uefa.nations":            ("UEFA Nations League",        "ESPN / Disney+"),
     "copa.america":            ("Copa América",               "ESPN / Disney+"),
-    "fifa.world":              ("Copa del Mundo FIFA",        "ESPN / Disney+"),
+    "fifa.world":              ("Copa del Mundo FIFA",        "DSports"),
 }
 
 
@@ -155,6 +155,8 @@ def _iso_to_clt(iso: str) -> str:
 # GROUP 1 — Fútbol  (club: SofaScore · selecciones: ESPN)
 # ---------------------------------------------------------------------------
 
+SLUGS_FIXED_PLATFORM = {"fifa.world"}  # Chilean rights differ from US; skip network override
+
 async def _espn_soccer(
     slug: str,
     display_name: str,
@@ -191,11 +193,12 @@ async def _espn_soccer(
             for bc in comp.get("broadcasts", []):
                 us_networks.extend(bc.get("names", []))
         resolved_platform = platform
-        for net in us_networks:
-            mapped = ESPN_NETWORK_TO_CHILE.get(net)
-            if mapped:
-                resolved_platform = mapped
-                break
+        if slug not in SLUGS_FIXED_PLATFORM:
+            for net in us_networks:
+                mapped = ESPN_NETWORK_TO_CHILE.get(net)
+                if mapped:
+                    resolved_platform = mapped
+                    break
         round_info = game.get("season", {}).get("slug", "") or status
         events.append(Event(
             competition=display_name,

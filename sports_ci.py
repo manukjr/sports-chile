@@ -66,7 +66,7 @@ ESPN_SOCCER_LEAGUES: dict[str, tuple[str, str]] = {
     "concacaf.nations.league": ("CONCACAF Nations League",    "ESPN / Disney+"),
     "uefa.nations":            ("UEFA Nations League",        "ESPN / Disney+"),
     "copa.america":            ("Copa América",               "ESPN / Disney+"),
-    "fifa.world":              ("Copa del Mundo FIFA",        "ESPN / Disney+"),
+    "fifa.world":              ("Copa del Mundo FIFA",        "DSports"),
 }
 
 
@@ -171,6 +171,8 @@ def _iso_to_clt_date(iso: str) -> str:
 # GROUP 1 — Fútbol Europeo & Sudamericano  (ESPN Soccer public API)
 # ---------------------------------------------------------------------------
 
+SLUGS_FIXED_PLATFORM = {"fifa.world"}  # Chilean rights differ from US; skip network override
+
 async def _espn_soccer(
     slug: str,
     display_name: str,
@@ -210,13 +212,16 @@ async def _espn_soccer(
             for bc in comp.get("broadcasts", []):
                 us_networks.extend(bc.get("names", []))
 
-        # Resolve US broadcast network → Chilean platform (same logic as Group 2)
+        # Resolve US broadcast network → Chilean platform.
+        # Slugs in SLUGS_FIXED_PLATFORM have local rights that differ from the US
+        # broadcast network, so we skip the override and keep the dict value.
         resolved_platform = platform
-        for net in us_networks:
-            mapped = ESPN_NETWORK_TO_CHILE.get(net)
-            if mapped:
-                resolved_platform = mapped
-                break
+        if slug not in SLUGS_FIXED_PLATFORM:
+            for net in us_networks:
+                mapped = ESPN_NETWORK_TO_CHILE.get(net)
+                if mapped:
+                    resolved_platform = mapped
+                    break
 
         # Round info lives inside league node
         round_info = (
@@ -691,18 +696,17 @@ async def _fetch_espn_tennis(
             if grp_name != singles_key:
                 continue  # skip doubles, mixed, opposite gender
 
-            # Keep only matches whose CLT date matches the target and aren't Final yet
+            # Keep only matches whose CLT date matches the target
             today_comps = [
                 c for c in grp.get("competitions", [])
                 if _iso_to_clt_date(c.get("date", "")) == date_str
-                and c.get("status", {}).get("type", {}).get("description", "") != "Final"
             ]
             if not today_comps:
                 continue
 
-            # Grand Slams get 6 match rows; regular tournaments get 10.
-            # Both use the same individual-match format — no more "X partidos programados".
-            cap = 6 if is_major else 10
+            # Grand Slams can have 50+ matches per day in early rounds; show them all.
+            # Regular tournaments capped at 10 to avoid noise.
+            cap = len(today_comps) if is_major else 10
             for c in today_comps[:cap]:
                 competitors = c.get("competitors", [])
                 home = next(
