@@ -1181,6 +1181,7 @@ def generate_html(
     'soccer':    {{ label: '⚽ Fútbol',        color: '#00b4d8' }},
     'us-sports': {{ label: '🏀 Deportes USA',  color: '#f77f00' }},
     'motor':     {{ label: '🏎️ Motor',          color: '#e63946' }},
+    'rugby':     {{ label: '🏉 Rugby',           color: '#2d6a4f' }},
     'other':     {{ label: '🎾 Otros',           color: '#9b5de5' }},
   }};
 
