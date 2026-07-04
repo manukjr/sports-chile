@@ -100,6 +100,7 @@ CATEGORY_COLORS = {
     "soccer":    "#00b4d8",
     "us-sports": "#f77f00",
     "motor":     "#e63946",
+    "rugby":     "#2d6a4f",
     "other":     "#9b5de5",
 }
 
@@ -111,6 +112,16 @@ ESPN_NATIONAL_LEAGUES: dict[str, tuple[str, str]] = {
     "uefa.nations":            ("UEFA Nations League",        "ESPN / Disney+"),
     "copa.america":            ("Copa América",               "ESPN / Disney+"),
     "fifa.world":              ("Copa del Mundo FIFA",        "DSports"),
+}
+
+# ── ESPN Rugby API (international men's competitions only) ───────────────────
+# ESPN's rugby scoreboard uses numeric league IDs instead of slugs.
+ESPN_RUGBY_LEAGUES: dict[str, tuple[str, str]] = {
+    "164205": ("Rugby World Cup",             "ESPN / Disney+"),
+    "180659": ("Six Nations",                 "ESPN / Disney+"),
+    "244293": ("Rugby Championship",          "ESPN / Disney+"),
+    "17567":  ("Nations Championship",        "ESPN / Disney+"),
+    "289234": ("Test Match Internacional",    "ESPN / Disney+"),
 }
 
 
@@ -673,6 +684,74 @@ async def fetch_group3(date_str: str, client: httpx.AsyncClient) -> tuple[list[E
 
 
 # ---------------------------------------------------------------------------
+# GROUP 5 — Rugby Internacional  (ESPN public rugby scoreboard API)
+# ---------------------------------------------------------------------------
+
+async def _espn_rugby(
+    league_id: str,
+    display_name: str,
+    platform: str,
+    date_compact: str,
+    client: httpx.AsyncClient,
+) -> tuple[list[Event], str | None]:
+    """Fetch one international rugby competition's fixtures from ESPN's public API."""
+    url = f"https://site.api.espn.com/apis/site/v2/sports/rugby/{league_id}/scoreboard"
+    try:
+        r = await client.get(url, params={"dates": date_compact}, headers=HEADERS)
+        if r.status_code in (400, 404):
+            return [], None
+        r.raise_for_status()
+        data = r.json()
+    except Exception as exc:
+        LOG.error("ESPN rugby %s error: %s", league_id, exc)
+        return [], f"{display_name} (ESPN rugby): {exc}"
+
+    events: list[Event] = []
+    for game in data.get("events", []):
+        time_clt = _iso_to_clt(game.get("date", ""))
+
+        home_t = away_t = ""
+        for comp in game.get("competitions", []):
+            for competitor in comp.get("competitors", []):
+                team_name = competitor.get("team", {}).get("displayName", "")
+                if competitor.get("homeAway") == "home":
+                    home_t = team_name
+                elif competitor.get("homeAway") == "away":
+                    away_t = team_name
+
+        events.append(Event(
+            competition=display_name,
+            category="rugby",
+            home_team=home_t or "TBD",
+            away_team=away_t or "TBD",
+            time_clt=time_clt,
+            platform=platform,
+            round="",
+        ))
+
+    return events, None
+
+
+async def fetch_group5(date_str: str, client: httpx.AsyncClient) -> tuple[list[Event], list[str]]:
+    """Fetch international men's rugby fixtures for all configured competitions."""
+    date_compact = date_str.replace("-", "")
+    tasks = [
+        _espn_rugby(league_id, name, platform, date_compact, client)
+        for league_id, (name, platform) in ESPN_RUGBY_LEAGUES.items()
+    ]
+    results = await asyncio.gather(*tasks, return_exceptions=False)
+
+    all_events: list[Event] = []
+    errors: list[str] = []
+    for evs, err in results:
+        all_events.extend(evs)
+        if err:
+            errors.append(err)
+
+    return all_events, errors
+
+
+# ---------------------------------------------------------------------------
 # GROUP 4 — ATP Tennis  (via SofaScore — same API as Group 1)
 # ---------------------------------------------------------------------------
 
@@ -825,7 +904,7 @@ def generate_html(
   </div>"""
 
     # ── Legend ────────────────────────────────────────────────────────────────
-    labels = {"soccer": "Fútbol", "us-sports": "Deportes USA", "motor": "Motor", "other": "Otros"}
+    labels = {"soccer": "Fútbol", "us-sports": "Deportes USA", "motor": "Motor", "rugby": "Rugby", "other": "Otros"}
     legend_html = ""
     for cat, col in CATEGORY_COLORS.items():
         legend_html += f'<span class="legend-item"><span class="dot" style="background:{col}"></span>{labels[cat]}</span>'
@@ -1244,13 +1323,14 @@ async def main() -> None:
         except Exception:
             pass  # non-fatal
 
-        # Fetch all 4 groups for all 7 days concurrently (28 tasks total)
+        # Fetch all 5 groups for all 7 days concurrently (35 tasks total)
         day_tasks = [
             asyncio.gather(
                 fetch_group1(d.strftime("%Y-%m-%d"), client),
                 fetch_group2(d.strftime("%Y-%m-%d"), client),
                 fetch_group3(d.strftime("%Y-%m-%d"), client),
                 fetch_group4(d.strftime("%Y-%m-%d"), client),
+                fetch_group5(d.strftime("%Y-%m-%d"), client),
                 return_exceptions=True,
             )
             for d in dates
