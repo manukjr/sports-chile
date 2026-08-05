@@ -44,6 +44,18 @@ HEADERS = {
     "Accept-Language": "es-CL,es;q=0.9,en;q=0.8",
 }
 
+# ESPN's public site.api.espn.com started 403-ing every request once the
+# 7-day x multi-group fetch pushed concurrent hits past ~250 in one burst.
+# Cap simultaneous ESPN requests across the whole run and look more like a
+# real browser tab (Referer/Origin) to stay under whatever triggered it.
+ESPN_SEMAPHORE = asyncio.Semaphore(6)
+ESPN_HEADERS = {
+    **HEADERS,
+    "Referer": "https://www.espn.com/",
+    "Origin": "https://www.espn.com",
+    "Accept": "application/json, text/plain, */*",
+}
+
 # ── ESPN Soccer API (Group 1) ─────────────────────────────────────────────────
 # Same public API family as NBA/NFL/MLB (Group 2). No key required.
 # slug → (display name, Chilean platform)
@@ -204,7 +216,8 @@ async def _espn_soccer(
     """Fetch one league's fixtures from ESPN's public soccer scoreboard API."""
     url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{slug}/scoreboard"
     try:
-        r = await client.get(url, params={"dates": date_compact}, headers=HEADERS)
+        async with ESPN_SEMAPHORE:
+            r = await client.get(url, params={"dates": date_compact}, headers=ESPN_HEADERS)
         # ESPN returns 400/404 for leagues with no coverage — treat as empty, not error
         if r.status_code in (400, 404):
             return [], None
@@ -295,7 +308,8 @@ async def _espn_sport(
     """Generic ESPN scoreboard fetcher."""
     events: list[Event] = []
     try:
-        r = await client.get(url, headers=HEADERS)
+        async with ESPN_SEMAPHORE:
+            r = await client.get(url, headers=ESPN_HEADERS)
         r.raise_for_status()
         data = r.json()
     except Exception as exc:
@@ -352,7 +366,8 @@ async def _fetch_ufc(target_date: datetime.date, client: httpx.AsyncClient) -> t
     Works from any IP (no geo-redirect, no bot protection)."""
     url = "https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard"
     try:
-        r = await client.get(url, params={"dates": target_date.strftime("%Y%m%d")}, headers=HEADERS)
+        async with ESPN_SEMAPHORE:
+            r = await client.get(url, params={"dates": target_date.strftime("%Y%m%d")}, headers=ESPN_HEADERS)
         if r.status_code in (400, 404):
             return [], None
         r.raise_for_status()
@@ -687,7 +702,8 @@ async def _espn_rugby(
     """Fetch one international rugby competition's fixtures from ESPN's public API."""
     url = f"https://site.api.espn.com/apis/site/v2/sports/rugby/{league_id}/scoreboard"
     try:
-        r = await client.get(url, params={"dates": date_compact}, headers=HEADERS)
+        async with ESPN_SEMAPHORE:
+            r = await client.get(url, params={"dates": date_compact}, headers=ESPN_HEADERS)
         if r.status_code in (400, 404):
             return [], None
         r.raise_for_status()
@@ -764,7 +780,8 @@ async def _fetch_espn_tennis(
     """
     url = f"{ESPN_TENNIS_BASE}/{tour_slug}/scoreboard"
     try:
-        r = await client.get(url, params={"dates": date_str.replace("-", "")}, headers=HEADERS)
+        async with ESPN_SEMAPHORE:
+            r = await client.get(url, params={"dates": date_str.replace("-", "")}, headers=ESPN_HEADERS)
         if r.status_code in (400, 404):
             return [], None
         r.raise_for_status()
