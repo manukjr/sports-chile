@@ -60,6 +60,16 @@ ESPN_SOCCER_LEAGUES: dict[str, tuple[str, str]] = {
     "bra.1":                 ("Brasileirao Betano",         "KICK.com"),
     "arg.1":                 ("Liga Profesional Argentina", "ESPN / Disney+"),
     "chi.1":                 ("Liga de Primera Chile",      "CDF"),
+    # Domestic & continental cups
+    "eng.fa":                ("FA Cup",                     "ESPN / Disney+"),
+    "eng.league_cup":        ("Carabao Cup",                "ESPN / Disney+"),
+    "ita.coppa_italia":      ("Coppa Italia",                "DirecTV Sports"),
+    "esp.copa_del_rey":      ("Copa del Rey",                "DirecTV Sports"),
+    "fra.coupe_de_france":   ("Copa de Francia",             "DirecTV Sports"),
+    "ger.dfb_pokal":         ("DFB-Pokal",                   "DirecTV Sports"),
+    "uefa.europa.conf":      ("UEFA Conference League",      "ESPN / Disney+"),
+    "bra.copa_do_brazil":    ("Copa do Brasil",              "DirecTV Sports / KICK.com"),
+    "chi.copa_chi":          ("Copa Chile",                  "TNT Sports / HBO Max"),
     # National teams
     "fifa.friendly":           ("Amistoso Internacional",     "ESPN / Disney+"),
     "conmebol.qualifier":      ("Eliminatorias CONMEBOL",     "ESPN / Disney+"),

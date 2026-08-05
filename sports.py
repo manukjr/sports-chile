@@ -114,6 +114,20 @@ ESPN_NATIONAL_LEAGUES: dict[str, tuple[str, str]] = {
     "fifa.world":              ("Copa del Mundo FIFA",        "DSports"),
 }
 
+# ESPN slugs for domestic & continental cups (SofaScore's Group 1 filter only
+# covers league play, so cups are fetched via ESPN alongside national teams)
+ESPN_CUP_LEAGUES: dict[str, tuple[str, str]] = {
+    "eng.fa":              ("FA Cup",                  "ESPN / Disney+"),
+    "eng.league_cup":      ("Carabao Cup",              "ESPN / Disney+"),
+    "ita.coppa_italia":    ("Coppa Italia",             "DirecTV Sports"),
+    "esp.copa_del_rey":    ("Copa del Rey",             "DirecTV Sports"),
+    "fra.coupe_de_france": ("Copa de Francia",          "DirecTV Sports"),
+    "ger.dfb_pokal":       ("DFB-Pokal",                "DirecTV Sports"),
+    "uefa.europa.conf":    ("UEFA Conference League",   "ESPN / Disney+"),
+    "bra.copa_do_brazil":  ("Copa do Brasil",           "DirecTV Sports / KICK.com"),
+    "chi.copa_chi":        ("Copa Chile",               "TNT Sports / HBO Max"),
+}
+
 # ── ESPN Rugby API (international men's competitions only) ───────────────────
 # ESPN's rugby scoreboard uses numeric league IDs instead of slugs.
 ESPN_RUGBY_LEAGUES: dict[str, tuple[str, str]] = {
@@ -284,6 +298,16 @@ async def fetch_group1(date_str: str, client: httpx.AsyncClient) -> tuple[list[E
         for slug, (name, platform) in ESPN_NATIONAL_LEAGUES.items()
     ]
     for evs, err in await asyncio.gather(*national_tasks):
+        events.extend(evs)
+        if err:
+            errors.append(err)
+
+    # Domestic & continental cups via ESPN (SofaScore's filter above only covers leagues)
+    cup_tasks = [
+        _espn_soccer(slug, name, platform, date_compact, client)
+        for slug, (name, platform) in ESPN_CUP_LEAGUES.items()
+    ]
+    for evs, err in await asyncio.gather(*cup_tasks):
         events.extend(evs)
         if err:
             errors.append(err)
