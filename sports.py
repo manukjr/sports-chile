@@ -45,6 +45,15 @@ ESPN_HEADERS = {
     "Referer": "https://www.espn.com/",
     "Origin": "https://www.espn.com",
     "Accept": "application/json, text/plain, */*",
+    # Akamai (ESPN's WAF) blocks requests missing Chrome's Client Hints /
+    # Fetch Metadata headers — this, not request volume, caused the Aug 2026
+    # mass-403 incident. A real browser sends these automatically; httpx doesn't.
+    "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"macOS"',
+    "sec-fetch-dest": "empty",
+    "sec-fetch-mode": "cors",
+    "sec-fetch-site": "same-site",
 }
 
 # Exact filter for Group 1.

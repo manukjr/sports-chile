@@ -2,12 +2,9 @@ name: Daily Sports Schedule
 
 # ── Triggers ──────────────────────────────────────────────────────────────────
 on:
-  # schedule: TEMPORARILY DISABLED — nightly runs were hammering ESPN's API
-  # during its rate-limit cooldown, possibly extending the block. Re-enable
-  # once we've confirmed ESPN access is restored via manual workflow_dispatch.
-  # schedule:
-  #   # 03:00 UTC = 00:00 CLST (summer, UTC-3) / 23:00 CLT (winter, UTC-4)
-  #   - cron: '0 3 * * *'
+  schedule:
+    # 03:00 UTC = 00:00 CLST (summer, UTC-3) / 23:00 CLT (winter, UTC-4)
+    - cron: '0 3 * * *'
 
   workflow_dispatch:
     # Manual trigger from the GitHub UI — optionally pick a date
