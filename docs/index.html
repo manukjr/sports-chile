@@ -1,0 +1,2563 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sports Schedule: Chile — 2026-08-11</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #08090f;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  header { margin-bottom: 2rem; }
+  header h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.02em;
+  }
+  header .date-str {
+    font-size: 1rem;
+    color: #888;
+    margin-top: 0.25rem;
+    text-transform: capitalize;
+  }
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .count {
+    background: #1a1b26;
+    border: 1px solid #2a2b3a;
+    border-radius: 8px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.85rem;
+    color: #aaa;
+  }
+  .count strong { color: #fff; }
+  .legend { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    color: #888;
+  }
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  /* ── Date selector ──────────────────────────────────────── */
+  .date-selector {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+  }
+  .date-btn {
+    background: #0e0f18;
+    border: 1px solid #1e1f2e;
+    color: #666;
+    border-radius: 8px;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .date-btn:hover { border-color: #444; color: #aaa; }
+  .date-btn.active {
+    background: #00b4d8;
+    border-color: #00b4d8;
+    color: #000;
+    font-weight: 700;
+  }
+  /* ── Filter panel ──────────────────────────────────────── */
+  .filter-panel {
+    background: #0e0f18;
+    border: 1px solid #1e1f2e;
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .filter-top {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+  }
+  .filter-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    flex: 1;
+  }
+  .filter-btn {
+    font-size: 0.72rem;
+    background: none;
+    border: 1px solid #2a2b3a;
+    color: #888;
+    border-radius: 5px;
+    padding: 0.2rem 0.65rem;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .filter-btn:hover { border-color: #555; color: #ccc; }
+  .filter-groups { display: flex; gap: 2rem; flex-wrap: wrap; }
+  .filter-group { min-width: 170px; }
+  .filter-group-head {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.45rem;
+  }
+  .filter-group-head label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    user-select: none;
+  }
+  .filter-comp-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding-left: 1.25rem;
+    border-left: 2px solid #1e1f2e;
+    margin-left: 0.4rem;
+  }
+  .filter-comp-list label {
+    font-size: 0.76rem;
+    color: #777;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    user-select: none;
+    transition: color 0.15s;
+  }
+  .filter-comp-list label:hover { color: #bbb; }
+  input[type="checkbox"] { accent-color: #00b4d8; cursor: pointer; }
+  /* ── Table ─────────────────────────────────────────────── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+  }
+  thead th {
+    background: #0e0f18;
+    color: #666;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.75rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #1e1f2e;
+  }
+  thead th:first-child { width: 6px; padding: 0; }
+  tbody tr {
+    border-bottom: 1px solid #111320;
+    transition: background 0.15s;
+  }
+  tbody tr:hover { background: #0e0f1a; }
+  .bar-cell { width: 6px; padding: 0; }
+  .bar {
+    display: block;
+    width: 4px;
+    height: 100%;
+    min-height: 2.8rem;
+    border-radius: 0 2px 2px 0;
+  }
+  td { padding: 0.7rem 0.75rem; vertical-align: middle; }
+  td.comp { color: #aaa; font-size: 0.82rem; min-width: 160px; }
+  td.match { color: #eee; font-weight: 500; }
+  .vs { color: #555; font-weight: 400; font-size: 0.85em; margin: 0 0.3em; }
+  td.time {
+    color: #00b4d8;
+    font-weight: 700;
+    font-size: 1rem;
+    white-space: nowrap;
+    min-width: 70px;
+  }
+  td.platform { color: #888; font-size: 0.82rem; white-space: nowrap; }
+  .errors {
+    margin-top: 2rem;
+    background: #1a1010;
+    border: 1px solid #3a1515;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    font-size: 0.82rem;
+    color: #cc6666;
+  }
+  .errors ul { margin-top: 0.5rem; padding-left: 1.25rem; }
+  .errors li { margin-top: 0.25rem; }
+  footer {
+    margin-top: 2rem;
+    font-size: 0.75rem;
+    color: #333;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🏟 Sports Schedule: Chile</h1>
+    <div class="date-str" id="date-display">martes, 11 de agosto de 2026</div>
+  </header>
+  <div class="meta">
+    <div class="count"><strong id="event-count">52</strong> eventos</div>
+    <div class="legend"><span class="legend-item"><span class="dot" style="background:#00b4d8"></span>Fútbol</span><span class="legend-item"><span class="dot" style="background:#f77f00"></span>Deportes USA</span><span class="legend-item"><span class="dot" style="background:#e63946"></span>Motor</span><span class="legend-item"><span class="dot" style="background:#2d6a4f"></span>Rugby</span><span class="legend-item"><span class="dot" style="background:#9b5de5"></span>Otros</span></div>
+  </div>
+  <div class="date-selector">
+      <button class="date-btn active" data-date="2026-08-11" data-date-es="martes, 11 de agosto de 2026">Mar 11 Ago</button>
+      <button class="date-btn" data-date="2026-08-12" data-date-es="miércoles, 12 de agosto de 2026">Mié 12 Ago</button>
+      <button class="date-btn" data-date="2026-08-13" data-date-es="jueves, 13 de agosto de 2026">Jue 13 Ago</button>
+      <button class="date-btn" data-date="2026-08-14" data-date-es="viernes, 14 de agosto de 2026">Vie 14 Ago</button>
+      <button class="date-btn" data-date="2026-08-15" data-date-es="sábado, 15 de agosto de 2026">Sáb 15 Ago</button>
+      <button class="date-btn" data-date="2026-08-16" data-date-es="domingo, 16 de agosto de 2026">Dom 16 Ago</button>
+      <button class="date-btn" data-date="2026-08-17" data-date-es="lunes, 17 de agosto de 2026">Lun 17 Ago</button>
+      
+  </div>
+  <div class="filter-panel">
+    <div class="filter-top">
+      <span class="filter-label">🔍 Filtrar eventos</span>
+      <button class="filter-btn" id="btn-all">Todo</button>
+      <button class="filter-btn" id="btn-none">Ninguno</button>
+    </div>
+    <div class="filter-groups" id="filter-groups"></div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th></th>
+        <th>Competición</th>
+        <th>Partido</th>
+        <th>Hora CLT</th>
+        <th>Dónde ver</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr data-date="2026-08-11" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open<br><small style='color:#888'>Court 9</small></td>
+          <td class="match">Christopher O'Connell <span class='vs'>vs</span> Dane Sweeny</td>
+          <td class="time">12:05</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open<br><small style='color:#888'>Court 7</small></td>
+          <td class="match">Chak Lam Coleman Wong <span class='vs'>vs</span> SeongChan Hong</td>
+          <td class="time">12:05</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open<br><small style='color:#888'>P&G Stadium Court</small></td>
+          <td class="match">Lilli Tagger <span class='vs'>vs</span> Zhu Lin</td>
+          <td class="time">12:05</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open<br><small style='color:#888'>Tony Trabert Stadium 3</small></td>
+          <td class="match">Robin Montgomery <span class='vs'>vs</span> Julia Grabher</td>
+          <td class="time">12:05</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open<br><small style='color:#888'>Court 8</small></td>
+          <td class="match">Victoria Jimenez Kasintseva <span class='vs'>vs</span> Mananchaya Sawangkaew</td>
+          <td class="time">12:05</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open<br><small style='color:#888'>Court 6</small></td>
+          <td class="match">Lanlana Tararudee <span class='vs'>vs</span> Emerson Jones</td>
+          <td class="time">12:05</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open<br><small style='color:#888'>Champions' Court</small></td>
+          <td class="match">Kayla Day <span class='vs'>vs</span> Taylah Preston</td>
+          <td class="time">12:05</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open<br><small style='color:#888'>Court 10</small></td>
+          <td class="match">Renata Zarazua <span class='vs'>vs</span> Yuan Yue</td>
+          <td class="time">12:05</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open<br><small style='color:#888'>Court 4</small></td>
+          <td class="match">Aleksandr Shevchenko <span class='vs'>vs</span> Pablo Llamas Ruiz</td>
+          <td class="time">12:10</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open<br><small style='color:#888'>Grandstand</small></td>
+          <td class="match">Vignesh Gogineni <span class='vs'>vs</span> Otto Virtanen</td>
+          <td class="time">12:10</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="ATP — National Bank Open presented by Rogers">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — National Bank Open presented by Rogers<br><small style='color:#888'>Center Court</small></td>
+          <td class="match">Luciano Darderi <span class='vs'>vs</span> Brandon Nakashima</td>
+          <td class="time">12:40</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open<br><small style='color:#888'>Champions' Court</small></td>
+          <td class="match">Sinja Kraus <span class='vs'>vs</span> Marina Bassols Ribera</td>
+          <td class="time">13:30</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open<br><small style='color:#888'>Grandstand</small></td>
+          <td class="match">Giovanni Mpetshi Perricard <span class='vs'>vs</span> Trevor Svajda</td>
+          <td class="time">13:35</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open<br><small style='color:#888'>Court 7</small></td>
+          <td class="match">Dusan Lajovic <span class='vs'>vs</span> Benjamin Bonzi</td>
+          <td class="time">13:50</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open<br><small style='color:#888'>Court 4</small></td>
+          <td class="match">Luca Van Assche <span class='vs'>vs</span> Gustavo Heide</td>
+          <td class="time">13:50</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open<br><small style='color:#888'>Court 8</small></td>
+          <td class="match">Himeno Sakatsume <span class='vs'>vs</span> Leolia Jeanjean</td>
+          <td class="time">13:55</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open<br><small style='color:#888'>Court 10</small></td>
+          <td class="match">Polina Iatcenko <span class='vs'>vs</span> Claire Liu</td>
+          <td class="time">14:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open<br><small style='color:#888'>Court 6</small></td>
+          <td class="match">Anastasia Zakharova <span class='vs'>vs</span> Lucrezia Stefanini</td>
+          <td class="time">14:15</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="ATP — National Bank Open presented by Rogers">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — National Bank Open presented by Rogers<br><small style='color:#888'>Center Court</small></td>
+          <td class="match">Rafael Jodar <span class='vs'>vs</span> Arthur Fils</td>
+          <td class="time">14:20</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open<br><small style='color:#888'>Court 9</small></td>
+          <td class="match">Quentin Halys <span class='vs'>vs</span> SoonWoo Kwon</td>
+          <td class="time">14:55</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="soccer" data-competition="Copa Libertadores">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Copa Libertadores<br><small style='color:#888'>round-of-16</small></td>
+          <td class="match">Fluminense <span class='vs'>vs</span> Independiente Rivadavia</td>
+          <td class="time">18:00</td>
+          <td class="platform">Disney+ Premium</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="soccer" data-competition="Copa Sudamericana">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Copa Sudamericana<br><small style='color:#888'>round-of-16</small></td>
+          <td class="match">Boca Juniors <span class='vs'>vs</span> Deportivo Recoleta</td>
+          <td class="time">18:00</td>
+          <td class="platform">Disney+ Premium / DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="ATP — National Bank Open presented by Rogers">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — National Bank Open presented by Rogers<br><small style='color:#888'>Center Court</small></td>
+          <td class="match">Jakub Mensik <span class='vs'>vs</span> Ben Shelton</td>
+          <td class="time">18:05</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open<br><small style='color:#888'>Champions' Court</small></td>
+          <td class="match">Kei Nishikori <span class='vs'>vs</span> Francisco Comesana</td>
+          <td class="time">18:25</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Final</small></td>
+          <td class="match">Detroit Tigers <span class='vs'>vs</span> Cleveland Guardians</td>
+          <td class="time">18:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Final</small></td>
+          <td class="match">Miami Marlins <span class='vs'>vs</span> Pittsburgh Pirates</td>
+          <td class="time">18:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Final</small></td>
+          <td class="match">Washington Nationals <span class='vs'>vs</span> Chicago Cubs</td>
+          <td class="time">18:45</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="us-sports" data-competition="UFC">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">UFC<br><small style='color:#888'>Cartelera Estelar · Middleweight</small></td>
+          <td class="match">Jon Kunneman <span class='vs'>vs</span> Joe Kropschot</td>
+          <td class="time">19:00</td>
+          <td class="platform">Paramount+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="us-sports" data-competition="UFC">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">UFC<br><small style='color:#888'>Cartelera Estelar · Featherweight</small></td>
+          <td class="match">Tom Pagliarulo <span class='vs'>vs</span> Ananias Mulumba</td>
+          <td class="time">19:00</td>
+          <td class="platform">Paramount+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="us-sports" data-competition="UFC">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">UFC<br><small style='color:#888'>Cartelera Estelar · Flyweight</small></td>
+          <td class="match">Bilal Hasan <span class='vs'>vs</span> Mridul Saikia</td>
+          <td class="time">19:00</td>
+          <td class="platform">Paramount+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="us-sports" data-competition="UFC">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">UFC<br><small style='color:#888'>Cartelera Estelar · Lightweight</small></td>
+          <td class="match">Fabrizio Escarrega <span class='vs'>vs</span> Abe Alsaghir</td>
+          <td class="time">19:00</td>
+          <td class="platform">Paramount+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="us-sports" data-competition="UFC">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">UFC<br><small style='color:#888'>Cartelera Estelar · Heavyweight</small></td>
+          <td class="match">Anthony Wint <span class='vs'>vs</span> Matt Adams</td>
+          <td class="time">19:00</td>
+          <td class="platform">Paramount+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="WTA — National Bank Open presented by Rogers">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — National Bank Open presented by Rogers</td>
+          <td class="match">Belinda Bencic <span class='vs'>vs</span> Coco Gauff</td>
+          <td class="time">19:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Final</small></td>
+          <td class="match">New York Yankees <span class='vs'>vs</span> Seattle Mariners</td>
+          <td class="time">19:05</td>
+          <td class="platform">MLB.TV · MLB.TV/TBS US</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Final</small></td>
+          <td class="match">Toronto Blue Jays <span class='vs'>vs</span> Boston Red Sox</td>
+          <td class="time">19:07</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open<br><small style='color:#888'>Court 4</small></td>
+          <td class="match">Jaime Faria <span class='vs'>vs</span> Nikoloz Basilashvili</td>
+          <td class="time">19:10</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Final</small></td>
+          <td class="match">Atlanta Braves <span class='vs'>vs</span> New York Mets</td>
+          <td class="time">19:15</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="WTA — National Bank Open presented by Rogers">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — National Bank Open presented by Rogers<br><small style='color:#888'>Centre Court</small></td>
+          <td class="match">Naomi Osaka <span class='vs'>vs</span> Elena Rybakina</td>
+          <td class="time">19:35</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>In Progress</small></td>
+          <td class="match">Minnesota Twins <span class='vs'>vs</span> Baltimore Orioles</td>
+          <td class="time">19:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>In Progress</small></td>
+          <td class="match">Chicago White Sox <span class='vs'>vs</span> Cincinnati Reds</td>
+          <td class="time">19:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>In Progress</small></td>
+          <td class="match">St. Louis Cardinals <span class='vs'>vs</span> Philadelphia Phillies</td>
+          <td class="time">19:45</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="other" data-competition="ATP — National Bank Open presented by Rogers">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — National Bank Open presented by Rogers<br><small style='color:#888'>Center Court</small></td>
+          <td class="match">Daniel Merida <span class='vs'>vs</span> Learner Tien</td>
+          <td class="time">19:45</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="soccer" data-competition="Liga Profesional Argentina">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga Profesional Argentina<br><small style='color:#888'>torneo-clausura</small></td>
+          <td class="match">Talleres (Córdoba) <span class='vs'>vs</span> Lanús</td>
+          <td class="time">20:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="soccer" data-competition="Copa Libertadores">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Copa Libertadores<br><small style='color:#888'>round-of-16</small></td>
+          <td class="match">Deportes Tolima <span class='vs'>vs</span> Independiente del Valle</td>
+          <td class="time">20:30</td>
+          <td class="platform">Disney+ Premium</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="soccer" data-competition="Copa Libertadores">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Copa Libertadores<br><small style='color:#888'>round-of-16</small></td>
+          <td class="match">Estudiantes de La Plata <span class='vs'>vs</span> Universidad Católica</td>
+          <td class="time">20:30</td>
+          <td class="platform">Disney+ Premium</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="soccer" data-competition="Copa Sudamericana">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Copa Sudamericana<br><small style='color:#888'>round-of-16</small></td>
+          <td class="match">Bolívar <span class='vs'>vs</span> São Paulo</td>
+          <td class="time">20:30</td>
+          <td class="platform">Disney+ Premium / DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>In Progress</small></td>
+          <td class="match">Los Angeles Angels <span class='vs'>vs</span> Texas Rangers</td>
+          <td class="time">21:38</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>In Progress</small></td>
+          <td class="match">Arizona Diamondbacks <span class='vs'>vs</span> Colorado Rockies</td>
+          <td class="time">21:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>In Progress</small></td>
+          <td class="match">San Diego Padres <span class='vs'>vs</span> Milwaukee Brewers</td>
+          <td class="time">21:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>In Progress</small></td>
+          <td class="match">Athletics Athletics <span class='vs'>vs</span> Tampa Bay Rays</td>
+          <td class="time">21:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>In Progress</small></td>
+          <td class="match">San Francisco Giants <span class='vs'>vs</span> Houston Astros</td>
+          <td class="time">21:45</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-11" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>In Progress</small></td>
+          <td class="match">Los Angeles Dodgers <span class='vs'>vs</span> Kansas City Royals</td>
+          <td class="time">22:10</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open<br><small style='color:#888'>Court 10</small></td>
+          <td class="match">Nicolas Mejia <span class='vs'>vs</span> Jacob Fearnley</td>
+          <td class="time">10:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open<br><small style='color:#888'>Grandstand</small></td>
+          <td class="match">Marcos Giron <span class='vs'>vs</span> Henrique Rocha</td>
+          <td class="time">10:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open<br><small style='color:#888'>Court 8</small></td>
+          <td class="match">Mark Lajal <span class='vs'>vs</span> Dalibor Svrcina</td>
+          <td class="time">10:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open<br><small style='color:#888'>Champions' Court</small></td>
+          <td class="match">Aleksandar Vukic <span class='vs'>vs</span> Darwin Blanch</td>
+          <td class="time">10:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open<br><small style='color:#888'>Tony Trabert Stadium 3</small></td>
+          <td class="match">Carol Young Suh Lee <span class='vs'>vs</span> Polina Kudermetova</td>
+          <td class="time">10:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open<br><small style='color:#888'>Court 4</small></td>
+          <td class="match">Wang Xiyu <span class='vs'>vs</span> Bianca Andreescu</td>
+          <td class="time">10:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open<br><small style='color:#888'>Court 9</small></td>
+          <td class="match">Emiliana Arango <span class='vs'>vs</span> Aliaksandra Sasnovich</td>
+          <td class="time">10:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open<br><small style='color:#888'>Court 7</small></td>
+          <td class="match">Nadia Podoroska <span class='vs'>vs</span> Ella Seidel</td>
+          <td class="time">10:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open<br><small style='color:#888'>Court 6</small></td>
+          <td class="match">Yuan Yue <span class='vs'>vs</span> Kayla Day</td>
+          <td class="time">10:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open<br><small style='color:#888'>Champions' Court</small></td>
+          <td class="match">Aleksandr Shevchenko <span class='vs'>vs</span> Christopher O'Connell</td>
+          <td class="time">11:30</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open<br><small style='color:#888'>Grandstand</small></td>
+          <td class="match">Luca Van Assche <span class='vs'>vs</span> Dusan Lajovic</td>
+          <td class="time">11:30</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open<br><small style='color:#888'>Court 10</small></td>
+          <td class="match">Chak Lam Coleman Wong <span class='vs'>vs</span> Otto Virtanen</td>
+          <td class="time">11:30</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open<br><small style='color:#888'>Court 6</small></td>
+          <td class="match">Rebecca Sramkova <span class='vs'>vs</span> Elsa Jacquemot</td>
+          <td class="time">11:30</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open<br><small style='color:#888'>Court 4</small></td>
+          <td class="match">Lanlana Tararudee <span class='vs'>vs</span> Mananchaya Sawangkaew</td>
+          <td class="time">11:30</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open<br><small style='color:#888'>Court 8</small></td>
+          <td class="match">Sinja Kraus <span class='vs'>vs</span> Claire Liu</td>
+          <td class="time">11:30</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open<br><small style='color:#888'>Court 9</small></td>
+          <td class="match">Oksana Selekhmeteva <span class='vs'>vs</span> Mary Stoiana</td>
+          <td class="time">11:30</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open<br><small style='color:#888'>Court 7</small></td>
+          <td class="match">Lucrezia Stefanini <span class='vs'>vs</span> Leolia Jeanjean</td>
+          <td class="time">11:30</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open<br><small style='color:#888'>Champions' Court</small></td>
+          <td class="match">Jaime Faria <span class='vs'>vs</span> Wu Yibing</td>
+          <td class="time">13:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open<br><small style='color:#888'>Court 10</small></td>
+          <td class="match">Quentin Halys <span class='vs'>vs</span> Bu Yunchaokete</td>
+          <td class="time">13:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open<br><small style='color:#888'>Tony Trabert Stadium 3</small></td>
+          <td class="match">Trevor Svajda <span class='vs'>vs</span> TBD</td>
+          <td class="time">13:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Minnesota Twins <span class='vs'>vs</span> Baltimore Orioles</td>
+          <td class="time">13:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">St. Louis Cardinals <span class='vs'>vs</span> Philadelphia Phillies</td>
+          <td class="time">14:15</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Athletics Athletics <span class='vs'>vs</span> Tampa Bay Rays</td>
+          <td class="time">15:05</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Arizona Diamondbacks <span class='vs'>vs</span> Colorado Rockies</td>
+          <td class="time">15:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">San Francisco Giants <span class='vs'>vs</span> Houston Astros</td>
+          <td class="time">15:45</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">San Diego Padres <span class='vs'>vs</span> Milwaukee Brewers</td>
+          <td class="time">16:10</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="soccer" data-competition="Copa Libertadores">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Copa Libertadores<br><small style='color:#888'>round-of-16</small></td>
+          <td class="match">Palmeiras <span class='vs'>vs</span> Cerro Porteño</td>
+          <td class="time">18:00</td>
+          <td class="platform">Disney+ Premium</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="soccer" data-competition="Copa Libertadores">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Copa Libertadores<br><small style='color:#888'>round-of-16</small></td>
+          <td class="match">Platense <span class='vs'>vs</span> Coquimbo Unido</td>
+          <td class="time">18:00</td>
+          <td class="platform">Disney+ Premium</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="soccer" data-competition="Copa Sudamericana">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Copa Sudamericana<br><small style='color:#888'>round-of-16</small></td>
+          <td class="match">Red Bull Bragantino <span class='vs'>vs</span> Atlético-MG</td>
+          <td class="time">18:00</td>
+          <td class="platform">Disney+ Premium / DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="soccer" data-competition="Copa Sudamericana">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Copa Sudamericana<br><small style='color:#888'>round-of-16</small></td>
+          <td class="match">Tigre <span class='vs'>vs</span> Montevideo City Torque</td>
+          <td class="time">18:00</td>
+          <td class="platform">Disney+ Premium / DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="ATP — National Bank Open presented by Rogers">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — National Bank Open presented by Rogers<br><small style='color:#888'>Center Court</small></td>
+          <td class="match">Rafael Jodar <span class='vs'>vs</span> Brandon Nakashima</td>
+          <td class="time">18:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Detroit Tigers <span class='vs'>vs</span> Cleveland Guardians</td>
+          <td class="time">18:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Miami Marlins <span class='vs'>vs</span> Pittsburgh Pirates</td>
+          <td class="time">18:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Washington Nationals <span class='vs'>vs</span> Chicago Cubs</td>
+          <td class="time">18:45</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">New York Yankees <span class='vs'>vs</span> Seattle Mariners</td>
+          <td class="time">19:00</td>
+          <td class="platform">ESPN / Disney+ · ESPN US</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="WTA — National Bank Open presented by Rogers">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — National Bank Open presented by Rogers<br><small style='color:#888'>Centre Court</small></td>
+          <td class="match">Elina Svitolina <span class='vs'>vs</span> Iga Swiatek</td>
+          <td class="time">19:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Toronto Blue Jays <span class='vs'>vs</span> Boston Red Sox</td>
+          <td class="time">19:07</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Atlanta Braves <span class='vs'>vs</span> New York Mets</td>
+          <td class="time">19:15</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="ATP — National Bank Open presented by Rogers">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — National Bank Open presented by Rogers<br><small style='color:#888'>Center Court</small></td>
+          <td class="match">Learner Tien <span class='vs'>vs</span> Ben Shelton</td>
+          <td class="time">19:30</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Chicago White Sox <span class='vs'>vs</span> Cincinnati Reds</td>
+          <td class="time">19:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="soccer" data-competition="Copa Libertadores">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Copa Libertadores<br><small style='color:#888'>round-of-16</small></td>
+          <td class="match">Cruzeiro <span class='vs'>vs</span> Flamengo</td>
+          <td class="time">20:30</td>
+          <td class="platform">Disney+ Premium</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="soccer" data-competition="Copa Sudamericana">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Copa Sudamericana<br><small style='color:#888'>round-of-16</small></td>
+          <td class="match">Independiente Santa Fe <span class='vs'>vs</span> River Plate</td>
+          <td class="time">20:30</td>
+          <td class="platform">Disney+ Premium / DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="other" data-competition="WTA — National Bank Open presented by Rogers">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — National Bank Open presented by Rogers<br><small style='color:#888'>Centre Court</small></td>
+          <td class="match">Coco Gauff <span class='vs'>vs</span> Elena Rybakina</td>
+          <td class="time">20:30</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Los Angeles Angels <span class='vs'>vs</span> Texas Rangers</td>
+          <td class="time">22:00</td>
+          <td class="platform">ESPN / Disney+ · ESPN US</td>
+        </tr>
+        <tr data-date="2026-08-12" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Los Angeles Dodgers <span class='vs'>vs</span> Kansas City Royals</td>
+          <td class="time">22:10</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="other" data-competition="ATP — National Bank Open presented by Rogers">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — National Bank Open presented by Rogers</td>
+          <td class="match">TBD <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">Tomas Machac <span class='vs'>vs</span> Pablo Carreno Busta</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">Botic Van De Zandschulp <span class='vs'>vs</span> Tallon Griekspoor</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> Kamil Majchrzak</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">Hamad Medjedovic <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">Aleksandar Kovacevic <span class='vs'>vs</span> Karen Khachanov</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">Adam Walton <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> Jenson Brooksby</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">Nuno Borges <span class='vs'>vs</span> Thanasi Kokkinakis</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">Valentin Royer <span class='vs'>vs</span> Stefanos Tsitsipas</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> Matteo Berrettini</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="other" data-competition="WTA — National Bank Open presented by Rogers">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — National Bank Open presented by Rogers</td>
+          <td class="match">TBD <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">Katie Boulter <span class='vs'>vs</span> Katie Volynets</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">Peyton Stearns <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">Darja Vidmanova <span class='vs'>vs</span> Anhelina Kalinina</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">Alycia Parks <span class='vs'>vs</span> Viktorija Golubic</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">Elvina Kalieva <span class='vs'>vs</span> Oleksandra Oliynykova</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">Nikola Bartunkova <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">Ashlyn Krueger <span class='vs'>vs</span> Lois Boisson</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">Catherine McNally <span class='vs'>vs</span> McCartney Kessler</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">Diane Parry <span class='vs'>vs</span> Caroline Dolehide</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">Simona Waltert <span class='vs'>vs</span> Petra Marcinko</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Detroit Tigers <span class='vs'>vs</span> Cleveland Guardians</td>
+          <td class="time">13:10</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Miami Marlins <span class='vs'>vs</span> Pittsburgh Pirates</td>
+          <td class="time">13:10</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">New York Yankees <span class='vs'>vs</span> Seattle Mariners</td>
+          <td class="time">13:35</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Chicago White Sox <span class='vs'>vs</span> Cincinnati Reds</td>
+          <td class="time">14:10</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Toronto Blue Jays <span class='vs'>vs</span> Boston Red Sox</td>
+          <td class="time">15:07</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Washington Nationals <span class='vs'>vs</span> Chicago Cubs</td>
+          <td class="time">16:05</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="soccer" data-competition="Copa Libertadores">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Copa Libertadores<br><small style='color:#888'>round-of-16</small></td>
+          <td class="match">Mirassol <span class='vs'>vs</span> Liga de Quito</td>
+          <td class="time">18:00</td>
+          <td class="platform">Disney+ Premium</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="soccer" data-competition="Copa Sudamericana">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Copa Sudamericana<br><small style='color:#888'>round-of-16</small></td>
+          <td class="match">Santos <span class='vs'>vs</span> Macará</td>
+          <td class="time">18:00</td>
+          <td class="platform">Disney+ Premium / DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="soccer" data-competition="Copa Sudamericana">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Copa Sudamericana<br><small style='color:#888'>round-of-16</small></td>
+          <td class="match">Vasco da Gama <span class='vs'>vs</span> Club Olimpia</td>
+          <td class="time">18:00</td>
+          <td class="platform">Disney+ Premium / DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="us-sports" data-competition="NFL">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">NFL<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Cincinnati Bengals <span class='vs'>vs</span> Detroit Lions</td>
+          <td class="time">19:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="us-sports" data-competition="NFL">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">NFL<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Pittsburgh Steelers <span class='vs'>vs</span> Green Bay Packers</td>
+          <td class="time">19:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="us-sports" data-competition="NFL">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">NFL<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">New England Patriots <span class='vs'>vs</span> Indianapolis Colts</td>
+          <td class="time">19:30</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Minnesota Twins <span class='vs'>vs</span> Philadelphia Phillies</td>
+          <td class="time">19:30</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="us-sports" data-competition="NFL">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">NFL<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Las Vegas Raiders <span class='vs'>vs</span> Arizona Cardinals</td>
+          <td class="time">20:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="us-sports" data-competition="NFL">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">NFL<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Houston Texans <span class='vs'>vs</span> Los Angeles Chargers</td>
+          <td class="time">20:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="soccer" data-competition="Copa Libertadores">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Copa Libertadores<br><small style='color:#888'>round-of-16</small></td>
+          <td class="match">Rosario Central <span class='vs'>vs</span> Corinthians</td>
+          <td class="time">20:30</td>
+          <td class="platform">Disney+ Premium</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="soccer" data-competition="Copa Sudamericana">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Copa Sudamericana<br><small style='color:#888'>round-of-16</small></td>
+          <td class="match">Cienciano del Cusco <span class='vs'>vs</span> Botafogo</td>
+          <td class="time">20:30</td>
+          <td class="platform">Disney+ Premium / DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="us-sports" data-competition="NFL">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">NFL<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">San Francisco 49ers <span class='vs'>vs</span> Tennessee Titans</td>
+          <td class="time">21:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Los Angeles Angels <span class='vs'>vs</span> Texas Rangers</td>
+          <td class="time">22:07</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-13" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Los Angeles Dodgers <span class='vs'>vs</span> Milwaukee Brewers</td>
+          <td class="time">22:10</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="soccer" data-competition="Coppa Italia">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Coppa Italia<br><small style='color:#888'>first-round</small></td>
+          <td class="match">Parma <span class='vs'>vs</span> Catania</td>
+          <td class="time">12:00</td>
+          <td class="platform">DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="soccer" data-competition="Coppa Italia">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Coppa Italia<br><small style='color:#888'>first-round</small></td>
+          <td class="match">Cagliari <span class='vs'>vs</span> Arezzo</td>
+          <td class="time">12:30</td>
+          <td class="platform">DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Chicago Cubs <span class='vs'>vs</span> St. Louis Cardinals</td>
+          <td class="time">14:20</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="soccer" data-competition="Coppa Italia">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Coppa Italia<br><small style='color:#888'>first-round</small></td>
+          <td class="match">Monza <span class='vs'>vs</span> US Avellino</td>
+          <td class="time">14:45</td>
+          <td class="platform">DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="soccer" data-competition="Coppa Italia">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Coppa Italia<br><small style='color:#888'>first-round</small></td>
+          <td class="match">Fiorentina <span class='vs'>vs</span> Benevento</td>
+          <td class="time">15:15</td>
+          <td class="platform">DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Cincinnati Reds <span class='vs'>vs</span> Miami Marlins</td>
+          <td class="time">18:10</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Pittsburgh Pirates <span class='vs'>vs</span> Boston Red Sox</td>
+          <td class="time">18:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Detroit Tigers <span class='vs'>vs</span> Chicago White Sox</td>
+          <td class="time">18:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="soccer" data-competition="Liga de Primera Chile">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga de Primera Chile<br><small style='color:#888'>2026-primera-division-de-chile</small></td>
+          <td class="match">Universidad de Concepción <span class='vs'>vs</span> La Serena</td>
+          <td class="time">19:00</td>
+          <td class="platform">CDF</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="us-sports" data-competition="NFL">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">NFL<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Atlanta Falcons <span class='vs'>vs</span> Denver Broncos</td>
+          <td class="time">19:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="us-sports" data-competition="NFL">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">NFL<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">New York Jets <span class='vs'>vs</span> Tampa Bay Buccaneers</td>
+          <td class="time">19:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="us-sports" data-competition="NFL">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">NFL<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Washington Commanders <span class='vs'>vs</span> Miami Dolphins</td>
+          <td class="time">19:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Tampa Bay Rays <span class='vs'>vs</span> Baltimore Orioles</td>
+          <td class="time">19:10</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Cleveland Guardians <span class='vs'>vs</span> San Diego Padres</td>
+          <td class="time">19:10</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">New York Mets <span class='vs'>vs</span> Washington Nationals</td>
+          <td class="time">19:10</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Atlanta Braves <span class='vs'>vs</span> Arizona Diamondbacks</td>
+          <td class="time">19:15</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Toronto Blue Jays <span class='vs'>vs</span> New York Yankees</td>
+          <td class="time">19:15</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="soccer" data-competition="Liga Profesional Argentina">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga Profesional Argentina<br><small style='color:#888'>torneo-clausura</small></td>
+          <td class="match">Racing Club <span class='vs'>vs</span> Banfield</td>
+          <td class="time">19:30</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Houston Astros <span class='vs'>vs</span> Seattle Mariners</td>
+          <td class="time">20:10</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Los Angeles Angels <span class='vs'>vs</span> Kansas City Royals</td>
+          <td class="time">21:38</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Athletics Athletics <span class='vs'>vs</span> Texas Rangers</td>
+          <td class="time">21:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Los Angeles Dodgers <span class='vs'>vs</span> Milwaukee Brewers</td>
+          <td class="time">22:10</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-14" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">San Francisco Giants <span class='vs'>vs</span> Colorado Rockies</td>
+          <td class="time">22:15</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> Arthur Fils</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">Jiri Lehecka <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> Ignacio Buse</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">Arthur Fery <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">Ugo Humbert <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">Brandon Nakashima <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> Daniil Medvedev</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">Novak Djokovic <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> Flavio Cobolli</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">Luciano Darderi <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">Iga Swiatek <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> Maria Sakkari</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">Janice Tjen <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> Mirra Andreeva</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> Clara Tauson</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">Elise Mertens <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">Linda Noskova <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> Iva Jovic</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">Marta Kostyuk <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> Jessica Pegula</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="rugby" data-competition="Test Match Internacional">
+          <td class="bar-cell"><span class="bar" style="background:#2d6a4f"></span></td>
+          <td class="comp">Test Match Internacional</td>
+          <td class="match">Australia <span class='vs'>vs</span> Japan</td>
+          <td class="time">01:15</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="soccer" data-competition="Coppa Italia">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Coppa Italia<br><small style='color:#888'>first-round</small></td>
+          <td class="match">Catanzaro <span class='vs'>vs</span> Sudtirol</td>
+          <td class="time">12:00</td>
+          <td class="platform">DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="soccer" data-competition="Coppa Italia">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Coppa Italia<br><small style='color:#888'>first-round</small></td>
+          <td class="match">Udinese <span class='vs'>vs</span> Padova</td>
+          <td class="time">12:30</td>
+          <td class="platform">DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="NFL">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">NFL<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Buffalo Bills <span class='vs'>vs</span> Carolina Panthers</td>
+          <td class="time">13:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="NFL">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">NFL<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Chicago Bears <span class='vs'>vs</span> Cleveland Browns</td>
+          <td class="time">13:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="NFL">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">NFL<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">New York Giants <span class='vs'>vs</span> Minnesota Vikings</td>
+          <td class="time">13:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Detroit Tigers <span class='vs'>vs</span> Chicago White Sox</td>
+          <td class="time">13:10</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="soccer" data-competition="La Liga">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">La Liga<br><small style='color:#888'>2026-27-laliga</small></td>
+          <td class="match">Alavés <span class='vs'>vs</span> Getafe</td>
+          <td class="time">13:30</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="soccer" data-competition="Liga Profesional Argentina">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga Profesional Argentina<br><small style='color:#888'>torneo-clausura</small></td>
+          <td class="match">Aldosivi <span class='vs'>vs</span> Tigre</td>
+          <td class="time">13:30</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="soccer" data-competition="Liga Profesional Argentina">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga Profesional Argentina<br><small style='color:#888'>torneo-clausura</small></td>
+          <td class="match">San Lorenzo <span class='vs'>vs</span> Unión (Santa Fe)</td>
+          <td class="time">13:30</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Chicago Cubs <span class='vs'>vs</span> St. Louis Cardinals</td>
+          <td class="time">14:20</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="soccer" data-competition="Coppa Italia">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Coppa Italia<br><small style='color:#888'>first-round</small></td>
+          <td class="match">Venezia <span class='vs'>vs</span> Modena</td>
+          <td class="time">14:45</td>
+          <td class="platform">DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Toronto Blue Jays <span class='vs'>vs</span> New York Yankees</td>
+          <td class="time">15:07</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="soccer" data-competition="Coppa Italia">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Coppa Italia<br><small style='color:#888'>first-round</small></td>
+          <td class="match">Torino <span class='vs'>vs</span> Carrarese</td>
+          <td class="time">15:15</td>
+          <td class="platform">DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="soccer" data-competition="La Liga">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">La Liga<br><small style='color:#888'>2026-27-laliga</small></td>
+          <td class="match">Sevilla <span class='vs'>vs</span> Rayo Vallecano</td>
+          <td class="time">15:30</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="soccer" data-competition="Brasileirao Betano">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Brasileirao Betano<br><small style='color:#888'>2026-brasileiro-serie-a</small></td>
+          <td class="match">Fluminense <span class='vs'>vs</span> Palmeiras</td>
+          <td class="time">15:30</td>
+          <td class="platform">KICK.com</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="soccer" data-competition="Liga Profesional Argentina">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga Profesional Argentina<br><small style='color:#888'>torneo-clausura</small></td>
+          <td class="match">Estudiantes de La Plata <span class='vs'>vs</span> Gimnasia La Plata</td>
+          <td class="time">15:45</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="NFL">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">NFL<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Kansas City Chiefs <span class='vs'>vs</span> Los Angeles Rams</td>
+          <td class="time">16:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="NFL">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">NFL<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">New Orleans Saints <span class='vs'>vs</span> Jacksonville Jaguars</td>
+          <td class="time">16:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">San Francisco Giants <span class='vs'>vs</span> Colorado Rockies</td>
+          <td class="time">16:05</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">New York Mets <span class='vs'>vs</span> Washington Nationals</td>
+          <td class="time">16:10</td>
+          <td class="platform">MLB.TV · MLB.TV/FS1 US</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="soccer" data-competition="Brasileirao Betano">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Brasileirao Betano<br><small style='color:#888'>2026-brasileiro-serie-a</small></td>
+          <td class="match">Athletico-PR <span class='vs'>vs</span> Red Bull Bragantino</td>
+          <td class="time">17:30</td>
+          <td class="platform">KICK.com</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="soccer" data-competition="Liga de Primera Chile">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga de Primera Chile<br><small style='color:#888'>2026-primera-division-de-chile</small></td>
+          <td class="match">Deportes Limache <span class='vs'>vs</span> Universidad de Chile</td>
+          <td class="time">17:30</td>
+          <td class="platform">CDF</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="UFC">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">UFC<br><small style='color:#888'>Early Prelims · Welterweight</small></td>
+          <td class="match">Jeremiah Wells <span class='vs'>vs</span> Myktybek Orolbai</td>
+          <td class="time">17:30</td>
+          <td class="platform">Paramount+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="UFC">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">UFC<br><small style='color:#888'>Early Prelims · Welterweight</small></td>
+          <td class="match">Neil Magny <span class='vs'>vs</span> Ramiz Brahimaj</td>
+          <td class="time">17:30</td>
+          <td class="platform">Paramount+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="UFC">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">UFC<br><small style='color:#888'>Early Prelims · Light Heavyweight</small></td>
+          <td class="match">Rafael Tobias <span class='vs'>vs</span> Lucas Fernando</td>
+          <td class="time">17:30</td>
+          <td class="platform">Paramount+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="soccer" data-competition="Liga Profesional Argentina">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga Profesional Argentina<br><small style='color:#888'>torneo-clausura</small></td>
+          <td class="match">Belgrano (Córdoba) <span class='vs'>vs</span> Independiente Rivadavia</td>
+          <td class="time">18:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="soccer" data-competition="Liga Profesional Argentina">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga Profesional Argentina<br><small style='color:#888'>torneo-clausura</small></td>
+          <td class="match">Newell's Old Boys <span class='vs'>vs</span> Deportivo Riestra</td>
+          <td class="time">18:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Tampa Bay Rays <span class='vs'>vs</span> Baltimore Orioles</td>
+          <td class="time">18:10</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Cincinnati Reds <span class='vs'>vs</span> Miami Marlins</td>
+          <td class="time">18:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="NFL">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">NFL<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Baltimore Ravens <span class='vs'>vs</span> Philadelphia Eagles</td>
+          <td class="time">19:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="UFC">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">UFC<br><small style='color:#888'>Prelims · Middleweight</small></td>
+          <td class="match">Vicente Luque <span class='vs'>vs</span> Tresean Gore</td>
+          <td class="time">19:00</td>
+          <td class="platform">Paramount+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="UFC">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">UFC<br><small style='color:#888'>Prelims · Middleweight</small></td>
+          <td class="match">Donte Johnson <span class='vs'>vs</span> Eric McConico</td>
+          <td class="time">19:00</td>
+          <td class="platform">Paramount+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="UFC">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">UFC<br><small style='color:#888'>Prelims · Lightweight</small></td>
+          <td class="match">Jalin Turner <span class='vs'>vs</span> Kauê Fernandes</td>
+          <td class="time">19:00</td>
+          <td class="platform">Paramount+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="UFC">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">UFC<br><small style='color:#888'>Prelims · Welterweight</small></td>
+          <td class="match">Chidi Njokuani <span class='vs'>vs</span> Joel Álvarez</td>
+          <td class="time">19:00</td>
+          <td class="platform">Paramount+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Cleveland Guardians <span class='vs'>vs</span> San Diego Padres</td>
+          <td class="time">19:10</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Minnesota Twins <span class='vs'>vs</span> Philadelphia Phillies</td>
+          <td class="time">19:10</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Houston Astros <span class='vs'>vs</span> Seattle Mariners</td>
+          <td class="time">19:10</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Atlanta Braves <span class='vs'>vs</span> Arizona Diamondbacks</td>
+          <td class="time">19:15</td>
+          <td class="platform">MLB.TV · MLB.TV/FOX US</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Pittsburgh Pirates <span class='vs'>vs</span> Boston Red Sox</td>
+          <td class="time">19:15</td>
+          <td class="platform">MLB.TV · MLB.TV/FOX US</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Los Angeles Dodgers <span class='vs'>vs</span> Milwaukee Brewers</td>
+          <td class="time">19:15</td>
+          <td class="platform">MLB.TV · MLB.TV/FOX US</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="soccer" data-competition="Brasileirao Betano">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Brasileirao Betano<br><small style='color:#888'>2026-brasileiro-serie-a</small></td>
+          <td class="match">São Paulo <span class='vs'>vs</span> Coritiba</td>
+          <td class="time">20:00</td>
+          <td class="platform">KICK.com</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="soccer" data-competition="Liga de Primera Chile">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga de Primera Chile<br><small style='color:#888'>2026-primera-division-de-chile</small></td>
+          <td class="match">Everton CD <span class='vs'>vs</span> Audax Italiano</td>
+          <td class="time">20:00</td>
+          <td class="platform">CDF</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="NFL">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">NFL<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Seattle Seahawks <span class='vs'>vs</span> Dallas Cowboys</td>
+          <td class="time">20:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="soccer" data-competition="Liga Profesional Argentina">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga Profesional Argentina<br><small style='color:#888'>torneo-clausura</small></td>
+          <td class="match">Platense <span class='vs'>vs</span> Boca Juniors</td>
+          <td class="time">20:15</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="UFC">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">UFC<br><small style='color:#888'>Cartelera Estelar · Lightweight</small></td>
+          <td class="match">Edson Barboza <span class='vs'>vs</span> Esteban Ribovics</td>
+          <td class="time">21:00</td>
+          <td class="platform">Paramount+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="UFC">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">UFC<br><small style='color:#888'>Cartelera Estelar · Middleweight</small></td>
+          <td class="match">Mansur Abdul-Malik <span class='vs'>vs</span> Dustin Stoltzfus</td>
+          <td class="time">21:00</td>
+          <td class="platform">Paramount+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="UFC">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">UFC<br><small style='color:#888'>Cartelera Estelar · Flyweight</small></td>
+          <td class="match">Charles Johnson <span class='vs'>vs</span> Jose Ochoa</td>
+          <td class="time">21:00</td>
+          <td class="platform">Paramount+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="UFC">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">UFC<br><small style='color:#888'>Cartelera Estelar · W Strawweight</small></td>
+          <td class="match">Mackenzie Dern <span class='vs'>vs</span> Gillian Robertson</td>
+          <td class="time">21:00</td>
+          <td class="platform">Paramount+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="UFC">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">UFC<br><small style='color:#888'>Cartelera Estelar · Welterweight</small></td>
+          <td class="match">Islam Makhachev <span class='vs'>vs</span> Ian Machado Garry</td>
+          <td class="time">21:00</td>
+          <td class="platform">Paramount+</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Los Angeles Angels <span class='vs'>vs</span> Kansas City Royals</td>
+          <td class="time">21:38</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-15" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Athletics Athletics <span class='vs'>vs</span> Texas Rangers</td>
+          <td class="time">21:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="soccer" data-competition="Brasileirao Betano">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Brasileirao Betano<br><small style='color:#888'>2026-brasileiro-serie-a</small></td>
+          <td class="match">Chapecoense <span class='vs'>vs</span> Bahia</td>
+          <td class="time">10:00</td>
+          <td class="platform">KICK.com</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="soccer" data-competition="La Liga">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">La Liga<br><small style='color:#888'>2026-27-laliga</small></td>
+          <td class="match">Racing Santander <span class='vs'>vs</span> Villarreal</td>
+          <td class="time">11:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="soccer" data-competition="Coppa Italia">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Coppa Italia<br><small style='color:#888'>first-round</small></td>
+          <td class="match">Frosinone <span class='vs'>vs</span> Juve Stabia</td>
+          <td class="time">12:00</td>
+          <td class="platform">DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Tampa Bay Rays <span class='vs'>vs</span> Baltimore Orioles</td>
+          <td class="time">12:15</td>
+          <td class="platform">TNT Sports / HBO Max · Peacock US</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="soccer" data-competition="Liga de Primera Chile">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga de Primera Chile<br><small style='color:#888'>2026-primera-division-de-chile</small></td>
+          <td class="match">Ñublense <span class='vs'>vs</span> Unión La Calera</td>
+          <td class="time">12:30</td>
+          <td class="platform">CDF</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="soccer" data-competition="Coppa Italia">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Coppa Italia<br><small style='color:#888'>first-round</small></td>
+          <td class="match">Genoa <span class='vs'>vs</span> Ascoli</td>
+          <td class="time">12:30</td>
+          <td class="platform">DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="soccer" data-competition="La Liga">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">La Liga<br><small style='color:#888'>2026-27-laliga</small></td>
+          <td class="match">Espanyol <span class='vs'>vs</span> Levante</td>
+          <td class="time">13:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Atlanta Braves <span class='vs'>vs</span> Arizona Diamondbacks</td>
+          <td class="time">13:35</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Pittsburgh Pirates <span class='vs'>vs</span> Boston Red Sox</td>
+          <td class="time">13:35</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Toronto Blue Jays <span class='vs'>vs</span> New York Yankees</td>
+          <td class="time">13:37</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Detroit Tigers <span class='vs'>vs</span> Chicago White Sox</td>
+          <td class="time">13:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Cincinnati Reds <span class='vs'>vs</span> Miami Marlins</td>
+          <td class="time">13:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Cleveland Guardians <span class='vs'>vs</span> San Diego Padres</td>
+          <td class="time">13:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">New York Mets <span class='vs'>vs</span> Washington Nationals</td>
+          <td class="time">13:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="soccer" data-competition="Liga Profesional Argentina">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga Profesional Argentina<br><small style='color:#888'>torneo-clausura</small></td>
+          <td class="match">Sarmiento (Junín) <span class='vs'>vs</span> Huracán</td>
+          <td class="time">14:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Minnesota Twins <span class='vs'>vs</span> Philadelphia Phillies</td>
+          <td class="time">14:10</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="soccer" data-competition="Coppa Italia">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Coppa Italia<br><small style='color:#888'>first-round</small></td>
+          <td class="match">Hellas Verona <span class='vs'>vs</span> Virtus Entella</td>
+          <td class="time">14:45</td>
+          <td class="platform">DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="soccer" data-competition="Brasileirao Betano">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Brasileirao Betano<br><small style='color:#888'>2026-brasileiro-serie-a</small></td>
+          <td class="match">Atlético-MG <span class='vs'>vs</span> Grêmio</td>
+          <td class="time">15:00</td>
+          <td class="platform">KICK.com</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="soccer" data-competition="Brasileirao Betano">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Brasileirao Betano<br><small style='color:#888'>2026-brasileiro-serie-a</small></td>
+          <td class="match">Vasco da Gama <span class='vs'>vs</span> Santos</td>
+          <td class="time">15:00</td>
+          <td class="platform">KICK.com</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="soccer" data-competition="Liga de Primera Chile">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga de Primera Chile<br><small style='color:#888'>2026-primera-division-de-chile</small></td>
+          <td class="match">Cobresal <span class='vs'>vs</span> Deportes Concepcion</td>
+          <td class="time">15:00</td>
+          <td class="platform">CDF</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Chicago Cubs <span class='vs'>vs</span> St. Louis Cardinals</td>
+          <td class="time">15:00</td>
+          <td class="platform">ESPN / Disney+ · ABC/MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="soccer" data-competition="Coppa Italia">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Coppa Italia<br><small style='color:#888'>first-round</small></td>
+          <td class="match">Lazio <span class='vs'>vs</span> Mantova</td>
+          <td class="time">15:15</td>
+          <td class="platform">DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="soccer" data-competition="La Liga">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">La Liga<br><small style='color:#888'>2026-27-laliga</small></td>
+          <td class="match">Celta Vigo <span class='vs'>vs</span> Osasuna</td>
+          <td class="time">15:30</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">San Francisco Giants <span class='vs'>vs</span> Colorado Rockies</td>
+          <td class="time">16:05</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Athletics Athletics <span class='vs'>vs</span> Texas Rangers</td>
+          <td class="time">16:05</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Los Angeles Angels <span class='vs'>vs</span> Kansas City Royals</td>
+          <td class="time">16:07</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Los Angeles Dodgers <span class='vs'>vs</span> Milwaukee Brewers</td>
+          <td class="time">16:10</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="soccer" data-competition="Liga Profesional Argentina">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga Profesional Argentina<br><small style='color:#888'>torneo-clausura</small></td>
+          <td class="match">River Plate <span class='vs'>vs</span> Argentinos Juniors</td>
+          <td class="time">17:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="soccer" data-competition="Brasileirao Betano">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Brasileirao Betano<br><small style='color:#888'>2026-brasileiro-serie-a</small></td>
+          <td class="match">Mirassol <span class='vs'>vs</span> Flamengo</td>
+          <td class="time">17:30</td>
+          <td class="platform">KICK.com</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="soccer" data-competition="Brasileirao Betano">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Brasileirao Betano<br><small style='color:#888'>2026-brasileiro-serie-a</small></td>
+          <td class="match">Vitória <span class='vs'>vs</span> Botafogo</td>
+          <td class="time">17:30</td>
+          <td class="platform">KICK.com</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="soccer" data-competition="Liga de Primera Chile">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga de Primera Chile<br><small style='color:#888'>2026-primera-division-de-chile</small></td>
+          <td class="match">Colo Colo <span class='vs'>vs</span> O'Higgins</td>
+          <td class="time">17:30</td>
+          <td class="platform">CDF</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="soccer" data-competition="Brasileirao Betano">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Brasileirao Betano<br><small style='color:#888'>2026-brasileiro-serie-a</small></td>
+          <td class="match">Corinthians <span class='vs'>vs</span> Cruzeiro</td>
+          <td class="time">18:30</td>
+          <td class="platform">KICK.com</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="soccer" data-competition="Liga Profesional Argentina">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga Profesional Argentina<br><small style='color:#888'>torneo-clausura</small></td>
+          <td class="match">Barracas Central <span class='vs'>vs</span> Rosario Central</td>
+          <td class="time">19:15</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="soccer" data-competition="Liga Profesional Argentina">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga Profesional Argentina<br><small style='color:#888'>torneo-clausura</small></td>
+          <td class="match">Central Córdoba (Santiago del Estero) <span class='vs'>vs</span> Instituto (Córdoba)</td>
+          <td class="time">19:15</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-16" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Houston Astros <span class='vs'>vs</span> Seattle Mariners</td>
+          <td class="time">19:20</td>
+          <td class="platform">TNT Sports / HBO Max · NBC US</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="other" data-competition="ATP — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">ATP — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="other" data-competition="WTA — Cincinnati Open">
+          <td class="bar-cell"><span class="bar" style="background:#9b5de5"></span></td>
+          <td class="comp">WTA — Cincinnati Open</td>
+          <td class="match">TBD <span class='vs'>vs</span> TBD</td>
+          <td class="time">00:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="soccer" data-competition="Coppa Italia">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Coppa Italia<br><small style='color:#888'>first-round</small></td>
+          <td class="match">Pisa <span class='vs'>vs</span> Empoli</td>
+          <td class="time">12:00</td>
+          <td class="platform">DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="soccer" data-competition="Coppa Italia">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Coppa Italia<br><small style='color:#888'>first-round</small></td>
+          <td class="match">Sassuolo <span class='vs'>vs</span> Cesena</td>
+          <td class="time">12:30</td>
+          <td class="platform">DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Cincinnati Reds <span class='vs'>vs</span> St. Louis Cardinals</td>
+          <td class="time">13:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="soccer" data-competition="Liga Profesional Argentina">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga Profesional Argentina<br><small style='color:#888'>torneo-clausura</small></td>
+          <td class="match">Estudiantes de Río Cuarto <span class='vs'>vs</span> Atlético Tucumán</td>
+          <td class="time">13:45</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="soccer" data-competition="Coppa Italia">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Coppa Italia<br><small style='color:#888'>first-round</small></td>
+          <td class="match">Cremonese <span class='vs'>vs</span> Sampdoria</td>
+          <td class="time">14:45</td>
+          <td class="platform">DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="soccer" data-competition="La Liga">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">La Liga<br><small style='color:#888'>2026-27-laliga</small></td>
+          <td class="match">Deportivo <span class='vs'>vs</span> Elche</td>
+          <td class="time">15:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="soccer" data-competition="Coppa Italia">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Coppa Italia<br><small style='color:#888'>first-round</small></td>
+          <td class="match">Palermo <span class='vs'>vs</span> Lecce</td>
+          <td class="time">15:15</td>
+          <td class="platform">DirecTV Sports</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="soccer" data-competition="Liga Profesional Argentina">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga Profesional Argentina<br><small style='color:#888'>torneo-clausura</small></td>
+          <td class="match">Lanús <span class='vs'>vs</span> Independiente</td>
+          <td class="time">16:00</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Tampa Bay Rays <span class='vs'>vs</span> Baltimore Orioles</td>
+          <td class="time">18:05</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="soccer" data-competition="Liga Profesional Argentina">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga Profesional Argentina<br><small style='color:#888'>torneo-clausura</small></td>
+          <td class="match">Vélez Sarsfield <span class='vs'>vs</span> Defensa y Justicia</td>
+          <td class="time">18:15</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Philadelphia Phillies <span class='vs'>vs</span> Miami Marlins</td>
+          <td class="time">18:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Cincinnati Reds <span class='vs'>vs</span> St. Louis Cardinals</td>
+          <td class="time">18:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="soccer" data-competition="Brasileirao Betano">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Brasileirao Betano<br><small style='color:#888'>2026-brasileiro-serie-a</small></td>
+          <td class="match">Internacional <span class='vs'>vs</span> Remo</td>
+          <td class="time">19:00</td>
+          <td class="platform">KICK.com</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Pittsburgh Pirates <span class='vs'>vs</span> Detroit Tigers</td>
+          <td class="time">19:00</td>
+          <td class="platform">ESPN / Disney+ · ESPN US</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Boston Red Sox <span class='vs'>vs</span> Arizona Diamondbacks</td>
+          <td class="time">19:10</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">New York Mets <span class='vs'>vs</span> San Diego Padres</td>
+          <td class="time">19:10</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Kansas City Royals <span class='vs'>vs</span> Athletics Athletics</td>
+          <td class="time">19:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Minnesota Twins <span class='vs'>vs</span> Atlanta Braves</td>
+          <td class="time">19:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Chicago Cubs <span class='vs'>vs</span> Chicago White Sox</td>
+          <td class="time">20:05</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="soccer" data-competition="Liga Profesional Argentina">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga Profesional Argentina<br><small style='color:#888'>torneo-clausura</small></td>
+          <td class="match">Gimnasia (Mendoza) <span class='vs'>vs</span> Talleres (Córdoba)</td>
+          <td class="time">20:30</td>
+          <td class="platform">ESPN / Disney+</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="soccer" data-competition="Liga de Primera Chile">
+          <td class="bar-cell"><span class="bar" style="background:#00b4d8"></span></td>
+          <td class="comp">Liga de Primera Chile<br><small style='color:#888'>2026-primera-division-de-chile</small></td>
+          <td class="match">Palestino <span class='vs'>vs</span> Huachipato</td>
+          <td class="time">20:30</td>
+          <td class="platform">CDF</td>
+        </tr>
+        <tr data-date="2026-08-17" data-category="us-sports" data-competition="MLB">
+          <td class="bar-cell"><span class="bar" style="background:#f77f00"></span></td>
+          <td class="comp">MLB<br><small style='color:#888'>Scheduled</small></td>
+          <td class="match">Colorado Rockies <span class='vs'>vs</span> Los Angeles Dodgers</td>
+          <td class="time">20:40</td>
+          <td class="platform">MLB.TV · MLB.TV US</td>
+        </tr>
+      <tr id="filter-empty" style="display:none">
+        <td colspan="5" style="text-align:center;color:#666;padding:2rem">No hay eventos para mostrar.</td>
+      </tr>
+    </tbody>
+  </table>
+  
+  <footer>Generado el 2026-08-11 22:16 CLT · Ventana: 2026-08-11 → 2026-08-17</footer>
+</div>
+<script>
+(function () {
+  const CAT_META = {
+    'soccer':    { label: '⚽ Fútbol',        color: '#00b4d8' },
+    'us-sports': { label: '🏀 Deportes USA',  color: '#f77f00' },
+    'motor':     { label: '🏎️ Motor',          color: '#e63946' },
+    'rugby':     { label: '🏉 Rugby',           color: '#2d6a4f' },
+    'other':     { label: '🎾 Otros',           color: '#9b5de5' },
+  };
+
+  let activeDate = '2026-08-11';
+  const allRows  = Array.from(document.querySelectorAll('tbody tr[data-category]'));
+
+  // Build/rebuild the competition filter for the currently active date
+  function buildFilter() {
+    const dayRows = allRows.filter(r => r.dataset.date === activeDate);
+    const catMap  = {};
+    dayRows.forEach(r => {
+      const cat = r.dataset.category, comp = r.dataset.competition;
+      if (!catMap[cat]) catMap[cat] = new Set();
+      catMap[cat].add(comp);
+    });
+    const container = document.getElementById('filter-groups');
+    container.innerHTML = '';
+    Object.entries(CAT_META).forEach(([cat, meta]) => {
+      if (!catMap[cat]) return;
+      const comps = [...catMap[cat]].sort();
+      const g = document.createElement('div');
+      g.className = 'filter-group';
+      g.innerHTML =
+        '<div class="filter-group-head"><label>' +
+        '<input type="checkbox" class="cat-cb" data-cat="' + cat + '" checked> ' +
+        '<span style="color:' + meta.color + '">' + meta.label + '</span>' +
+        '</label></div><div class="filter-comp-list"></div>';
+      const list = g.querySelector('.filter-comp-list');
+      comps.forEach(comp => {
+        const lbl = document.createElement('label');
+        const cb  = document.createElement('input');
+        cb.type = 'checkbox'; cb.className = 'comp-cb';
+        cb.dataset.cat = cat; cb.dataset.comp = comp; cb.checked = true;
+        lbl.appendChild(cb);
+        lbl.appendChild(document.createTextNode(' ' + comp));
+        list.appendChild(lbl);
+      });
+      container.appendChild(g);
+    });
+  }
+
+  // Show rows matching active date + checked competitions; update counter
+  function applyFilter() {
+    const checked = new Set();
+    document.querySelectorAll('.comp-cb:checked').forEach(cb => {
+      checked.add(cb.dataset.cat + '|||' + cb.dataset.comp);
+    });
+    let visible = 0;
+    allRows.forEach(r => {
+      const show = r.dataset.date === activeDate &&
+                   checked.has(r.dataset.category + '|||' + r.dataset.competition);
+      r.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    const ce = document.getElementById('event-count');
+    if (ce) ce.textContent = visible;
+    const fe = document.getElementById('filter-empty');
+    if (fe) fe.style.display = (visible === 0) ? '' : 'none';
+  }
+
+  // Sync category master checkbox state
+  function syncCat(cat) {
+    const cbs   = document.querySelectorAll('.comp-cb[data-cat="' + cat + '"]');
+    const n     = Array.from(cbs).filter(c => c.checked).length;
+    const catCb = document.querySelector('.cat-cb[data-cat="' + cat + '"]');
+    if (!catCb) return;
+    catCb.checked = n > 0;
+    catCb.indeterminate = n > 0 && n < cbs.length;
+  }
+
+  // Date button clicks
+  document.querySelectorAll('.date-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeDate = btn.dataset.date;
+      const dd = document.getElementById('date-display');
+      if (dd) dd.textContent = btn.dataset.dateEs;
+      document.querySelectorAll('.errors[data-date]').forEach(el => {
+        el.style.display = el.dataset.date === activeDate ? '' : 'none';
+      });
+      buildFilter();
+      applyFilter();
+    });
+  });
+
+  // Checkbox event delegation
+  document.addEventListener('change', e => {
+    const t = e.target;
+    if (t.classList.contains('cat-cb')) {
+      document.querySelectorAll('.comp-cb[data-cat="' + t.dataset.cat + '"]')
+        .forEach(cb => { cb.checked = t.checked; });
+    } else if (t.classList.contains('comp-cb')) {
+      syncCat(t.dataset.cat);
+    }
+    applyFilter();
+  });
+
+  // "Todo" / "Ninguno" buttons
+  document.getElementById('btn-all').addEventListener('click', () => {
+    document.querySelectorAll('.cat-cb,.comp-cb').forEach(cb => { cb.checked = true; cb.indeterminate = false; });
+    applyFilter();
+  });
+  document.getElementById('btn-none').addEventListener('click', () => {
+    document.querySelectorAll('.cat-cb,.comp-cb').forEach(cb => { cb.checked = false; cb.indeterminate = false; });
+    applyFilter();
+  });
+
+  // Initialise on page load
+  buildFilter();
+  applyFilter();
+})();
+</script>
+</body>
+</html>
