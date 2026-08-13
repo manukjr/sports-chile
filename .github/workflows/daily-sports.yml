@@ -2,9 +2,13 @@ name: Daily Sports Schedule
 
 # ── Triggers ──────────────────────────────────────────────────────────────────
 on:
-  schedule:
-    # 03:00 UTC = 00:00 CLST (summer, UTC-3) / 23:00 CLT (winter, UTC-4)
-    - cron: '0 3 * * *'
+  # schedule: PERMANENTLY DISABLED — GitHub Actions' cloud IPs are blocked by
+  # ESPN's Akamai WAF regardless of headers (confirmed via real production
+  # runs). Daily automation now runs locally via launchd + push_today.sh,
+  # which pushes straight to docs/ on main (Pages source = "Deploy from a
+  # branch"). workflow_dispatch kept below for manual/debugging use only.
+  # schedule:
+  #   - cron: '0 3 * * *'
 
   workflow_dispatch:
     # Manual trigger from the GitHub UI — optionally pick a date
