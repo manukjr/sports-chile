@@ -115,7 +115,9 @@ ESPN_NETWORK_TO_CHILE: dict[str, str] = {
     "ESPN2":        "ESPN / Disney+",
     "ESPNU":        "ESPN / Disney+",
     "ABC":          "ESPN / Disney+",
-    # Warner / TNT group  (NBC & Peacock → WBD holds LatAm NBA deal)
+    # Warner / TNT group  (NBC & Peacock → WBD holds LatAm NBA deal — NBA only,
+    # see NFL_EXCLUDED_NETWORKS below; ESPN/Disney+ holds the entire NFL
+    # LatAm package regardless of which US network airs a given game)
     "NBC":          "TNT Sports / HBO Max",
     "Peacock":      "TNT Sports / HBO Max",
     "TNT":          "TNT Sports / HBO Max",
@@ -133,6 +135,11 @@ ESPN_NETWORK_TO_CHILE: dict[str, str] = {
     "MLB Network":  "ESPN / Disney+",
     "MLB.TV":       "MLB.TV",
 }
+
+# ESPN + Disney+ Premium carries the FULL NFL season in Chile/LatAm (SNF, MNF,
+# RedZone, Super Bowl — confirmed via ESPN Press Room LatAm), so the WBD/TNT
+# Sports group above (an NBA-only LatAm deal) must never apply to NFL games.
+NFL_EXCLUDED_NETWORKS = {"NBC", "Peacock", "TNT", "TBS", "truTV"}
 
 CATEGORY_COLORS = {
     "soccer":    "#00b4d8",
@@ -327,6 +334,8 @@ async def _espn_sport(
 
         platform = _platform(competition)   # default fallback
         for net in us_networks:
+            if sport_key == "NFL" and net in NFL_EXCLUDED_NETWORKS:
+                continue  # WBD/TNT Sports NBA deal doesn't apply to NFL
             mapped = ESPN_NETWORK_TO_CHILE.get(net)
             if mapped:
                 platform = mapped
