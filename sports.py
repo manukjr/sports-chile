@@ -116,8 +116,8 @@ ESPN_NETWORK_TO_CHILE: dict[str, str] = {
     "ESPNU":        "ESPN / Disney+",
     "ABC":          "ESPN / Disney+",
     # Warner / TNT group  (NBC & Peacock → WBD holds LatAm NBA deal — NBA only,
-    # see NFL_EXCLUDED_NETWORKS below; ESPN/Disney+ holds the entire NFL
-    # LatAm package regardless of which US network airs a given game)
+    # see SPORTS_WITH_FULL_ESPN_LATAM_DEAL below; those sports' ESPN/Disney+
+    # deal covers every US network, so this group must not apply to them)
     "NBC":          "TNT Sports / HBO Max",
     "Peacock":      "TNT Sports / HBO Max",
     "TNT":          "TNT Sports / HBO Max",
@@ -136,10 +136,13 @@ ESPN_NETWORK_TO_CHILE: dict[str, str] = {
     "MLB.TV":       "MLB.TV",
 }
 
-# ESPN + Disney+ Premium carries the FULL NFL season in Chile/LatAm (SNF, MNF,
-# RedZone, Super Bowl — confirmed via ESPN Press Room LatAm), so the WBD/TNT
-# Sports group above (an NBA-only LatAm deal) must never apply to NFL games.
-NFL_EXCLUDED_NETWORKS = {"NBC", "Peacock", "TNT", "TBS", "truTV"}
+# The WBD/TNT Sports group above is an NBA-only LatAm deal. ESPN/Disney+ holds
+# the ENTIRE LatAm package for these other sports regardless of which US
+# network airs a given game — confirmed via ESPN Press Room LatAm for both:
+#   NFL: SNF, MNF, RedZone, Super Bowl
+#   MLB: regular season, All-Star Game, Postseason, World Series (2026-2028 deal)
+WBD_TNT_NETWORKS = {"NBC", "Peacock", "TNT", "TBS", "truTV"}
+SPORTS_WITH_FULL_ESPN_LATAM_DEAL = {"NFL", "MLB"}
 
 CATEGORY_COLORS = {
     "soccer":    "#00b4d8",
@@ -334,8 +337,8 @@ async def _espn_sport(
 
         platform = _platform(competition)   # default fallback
         for net in us_networks:
-            if sport_key == "NFL" and net in NFL_EXCLUDED_NETWORKS:
-                continue  # WBD/TNT Sports NBA deal doesn't apply to NFL
+            if sport_key in SPORTS_WITH_FULL_ESPN_LATAM_DEAL and net in WBD_TNT_NETWORKS:
+                continue  # WBD/TNT Sports NBA deal doesn't apply to these sports
             mapped = ESPN_NETWORK_TO_CHILE.get(net)
             if mapped:
                 platform = mapped
