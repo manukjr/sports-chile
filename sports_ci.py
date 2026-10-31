@@ -14,6 +14,8 @@ Usage (normally called via run_ci.py, not directly):
 """
 
 import asyncio
+import base64
+import json
 import logging
 import sys
 import webbrowser
@@ -1093,6 +1095,79 @@ def _date_es(d: datetime.date) -> str:
     return f"{day_name}, {d.day} de {month_name} de {d.year}"
 
 
+# ---------------------------------------------------------------------------
+# Competition badges
+# ---------------------------------------------------------------------------
+# Every competition gets a small badge next to its name so leagues are easy to tell
+# apart: the league's logo when we have one, otherwise a colored text chip.
+# logos/ holds ESPN's league logos resized to 64px, named by ESPN slug (eng.1.png,
+# uefa.champions.png) or nfl/nba/mlb/ufc. They're embedded in the page as data URIs
+# (one copy each), so the HTML stays self-contained and the publish step is unchanged.
+
+LOGOS_DIR = Path(__file__).resolve().parent / "logos"
+
+# Competition display name → logo file stem
+_LOGO_STEM: dict[str, str] = {name: slug for slug, (name, _) in ESPN_SOCCER_LEAGUES.items()}
+_LOGO_STEM.update({"NFL": "nfl", "NBA": "nba", "MLB": "mlb", "UFC": "ufc"})
+
+# Text chips for competitions without a usable logo: (code, background color)
+_CHIPS: dict[str, tuple[str, str]] = {
+    "Eliminatorias CONMEBOL":       ("ELIM", "#1d4e89"),
+    "Copa América":                 ("COPA", "#b3202a"),
+    "F1":                           ("F1",   "#e10600"),
+    "WEC":                          ("WEC",  "#1f6fd6"),
+    "GT World Challenge Europe":    ("GT EU", "#c9722a"),
+    "GT World Challenge America":   ("GT AM", "#2a9d8f"),
+    "GT World Challenge Asia":      ("GT AS", "#c2417a"),
+    "GT World Challenge Australia": ("GT AU", "#a8841c"),
+    "Rugby World Cup":              ("RWC",  "#2d6a4f"),
+    "Six Nations":                  ("6N",   "#2d6a4f"),
+    "Rugby Championship":           ("TRC",  "#2d6a4f"),
+    "Nations Championship":         ("NC",   "#2d6a4f"),
+    "Test Match Internacional":     ("TEST", "#2d6a4f"),
+}
+# Competitions named "<prefix> — <tournament>" (tennis) or with a variable suffix
+_CHIP_PREFIXES: dict[str, tuple[str, str]] = {
+    "ATP": ("ATP", "#1e73be"),
+    "WTA": ("WTA", "#8e44ad"),
+    "GT World Challenge": ("GT", "#c9722a"),
+}
+
+
+def _chip_spec(competition: str) -> tuple[str, str]:
+    """(code, color) for a competition's text chip."""
+    import re as _re
+    if competition in _CHIPS:
+        return _CHIPS[competition]
+    for prefix, spec in _CHIP_PREFIXES.items():
+        if competition.startswith(prefix):
+            return spec
+    # A competition added later: initials on a color derived from its name.
+    code = "".join(w[0] for w in _re.split(r"\W+", competition) if w)[:3].upper() or "?"
+    return code, f"hsl({sum(map(ord, competition)) % 360}, 45%, 38%)"
+
+
+def _competition_badges(competitions: set[str]) -> tuple[dict[str, str], str]:
+    """({competition: badge HTML}, CSS) for the competitions shown on the page."""
+    badges: dict[str, str] = {}
+    css: dict[str, str] = {}   # class → rule, so each logo is embedded only once
+    for comp in sorted(competitions):
+        stem = _LOGO_STEM.get(comp)
+        path = LOGOS_DIR / f"{stem}.png" if stem else None
+        if path and path.is_file():
+            cls = "lg-" + stem.replace(".", "-")
+            uri = "data:image/png;base64," + base64.b64encode(path.read_bytes()).decode()
+            css[cls] = f".{cls}{{background-image:url({uri})}}"
+            badges[comp] = f'<span class="badge badge-logo {cls}" aria-hidden="true"></span>'
+        else:
+            code, color = _chip_spec(comp)
+            badges[comp] = (
+                f'<span class="badge badge-chip" style="background:{color}" '
+                f'aria-hidden="true">{code}</span>'
+            )
+    return badges, "\n".join(css.values())
+
+
 def generate_html(
     events_by_date: dict[str, list[Event]],
     errors_by_date: dict[str, list[str]],
@@ -1115,6 +1190,13 @@ def generate_html(
             f"{label}</button>\n      "
         )
 
+    # ── Competition badges (logo or colored chip) ─────────────────────────────
+    badges, logo_css = _competition_badges(
+        {ev["competition"] for evs in events_by_date.values() for ev in evs}
+    )
+    # Escape "</" so the JSON can't close the <script> block it's embedded in.
+    badge_json = json.dumps(badges, ensure_ascii=False).replace("</", "<\\/")
+
     # ── Table rows (all 7 days; JS controls visibility) ───────────────────────
     rows_html = ""
     for ds, events in events_by_date.items():
@@ -1129,7 +1211,7 @@ def generate_html(
             rows_html += f"""
         <tr data-date="{ds}" data-category="{ev['category']}" data-competition="{comp_attr}">
           <td class="bar-cell"><span class="bar" style="background:{c}"></span></td>
-          <td class="comp">{ev['competition']}{rnd}</td>
+          <td class="comp"><div class="comp-wrap">{badges[ev['competition']]}<div class="comp-text">{ev['competition']}{rnd}</div></div></td>
           <td class="match">{match_str}</td>
           <td class="time">{ev['time_clt']}</td>
           <td class="platform">{ev['platform']}</td>
@@ -1342,6 +1424,34 @@ def generate_html(
   }}
   td {{ padding: 0.7rem 0.75rem; vertical-align: middle; }}
   td.comp {{ color: #aaa; font-size: 0.82rem; min-width: 160px; }}
+  /* ── Competition badges: logo on a white tile, or a colored text chip ── */
+  .comp-wrap {{ display: flex; align-items: center; gap: 0.6rem; }}
+  .badge {{
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 24px;
+    border-radius: 6px;
+  }}
+  .badge-logo {{
+    background-color: #fff;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 20px 20px;
+  }}
+  .badge-chip {{
+    color: #fff;
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    line-height: 1;
+  }}
+  .filter-comp-list .badge {{ width: 28px; height: 18px; border-radius: 4px; }}
+  .filter-comp-list .badge-logo {{ background-size: 14px 14px; }}
+  .filter-comp-list .badge-chip {{ font-size: 0.5rem; }}
+  {logo_css}
   td.match {{ color: #eee; font-weight: 500; }}
   .vs {{ color: #555; font-weight: 400; font-size: 0.85em; margin: 0 0.3em; }}
   td.time {{
@@ -1422,6 +1532,9 @@ def generate_html(
     'other':     {{ label: '🎾 Otros',           color: '#9b5de5' }},
   }};
 
+  // Competition name → badge HTML (logo or text chip), built by the scraper
+  const COMP_BADGE = {badge_json};
+
   let activeDate = '{today_str}';
   const allRows  = Array.from(document.querySelectorAll('tbody tr[data-category]'));
 
@@ -1453,6 +1566,7 @@ def generate_html(
         cb.type = 'checkbox'; cb.className = 'comp-cb';
         cb.dataset.cat = cat; cb.dataset.comp = comp; cb.checked = true;
         lbl.appendChild(cb);
+        if (COMP_BADGE[comp]) lbl.insertAdjacentHTML('beforeend', COMP_BADGE[comp]);
         lbl.appendChild(document.createTextNode(' ' + comp));
         list.appendChild(lbl);
       }});
