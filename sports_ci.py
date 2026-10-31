@@ -551,6 +551,81 @@ _GT_MONTH_ABBR = {
 _GT_CALENDAR_URL = "https://www.gt-world-challenge.com/calendar"
 # The calendar also lists non-racing dates (e.g. "AWARDS Banquet", "End of Year Gala").
 _GT_NON_RACE_WORDS = ("banquet", "gala", "award")
+# Timetable rows that aren't racing sessions: fan activities and race-progress markers
+# (e.g. "Main Race after 1h 30").
+_GT_NON_SESSION_WORDS = ("autograph", "fan experience", "parade", "grid walk", "pit walk", " after ")
+
+_MONTHS_EN = {
+    m: i for i, m in enumerate(
+        ("january", "february", "march", "april", "may", "june", "july",
+         "august", "september", "october", "november", "december"), 1)
+}
+
+
+def _session_label_es(label: str) -> str:
+    """Translate the common leading session words to Spanish (F1/WEC/GT share this)."""
+    import re as _re
+    label = _re.sub(r"^(Free )?Practice", "Práctica", label)
+    label = _re.sub(r"^Official Practice", "Práctica oficial", label)
+    label = _re.sub(r"^Night Practice", "Práctica nocturna", label)
+    label = _re.sub(r"^Pre-Qualifying", "Pre-clasificación", label)
+    label = _re.sub(r"^Qualifying", "Clasificación", label)
+    label = _re.sub(r"^Main Race", "Carrera principal", label)
+    label = _re.sub(r"^Race", "Carrera", label)
+    return label
+
+
+def _hhmm_to_minutes(text: str) -> int | None:
+    """'08:30' or '03:25 pm' → minutes since midnight (None if no time found)."""
+    import re as _re
+    m = _re.search(r"(\d{1,2}):(\d{2})\s*(am|pm)?", text, _re.I)
+    if not m:
+        return None
+    hour, minute, ampm = int(m.group(1)), int(m.group(2)), (m.group(3) or "").lower()
+    if ampm == "pm" and hour != 12:
+        hour += 12
+    elif ampm == "am" and hour == 12:
+        hour = 0
+    return hour * 60 + minute
+
+
+def _parse_gt_timetable(soup, event_start: date) -> list[tuple[datetime, str]]:
+    """
+    Parse an event page's timetable tables into [(utc_datetime, session_name)].
+
+    Each table has a day caption without a year ("Friday, 30 October") and rows of
+    session | local time | GMT. The circuit's UTC offset is derived from the
+    local-vs-GMT difference, so a session that crosses midnight in GMT still lands
+    on the right UTC date.
+    """
+    import re as _re
+    sessions: list[tuple[datetime, str]] = []
+    for table in soup.select("table.timetable__table"):
+        caption = table.select_one("caption")
+        m = _re.search(r"(\d{1,2})\s+([A-Za-z]+)", caption.get_text(" ", strip=True)) if caption else None
+        month = _MONTHS_EN.get(m.group(2).lower()) if m else None
+        if not month:
+            continue
+        # The caption has no year; a Dec → Jan event rolls into the next one.
+        year = event_start.year + (1 if month < event_start.month else 0)
+        try:
+            day = datetime(year, month, int(m.group(1)))
+        except ValueError:
+            continue
+
+        for tr in table.select("tbody tr"):
+            cells = [td.get_text(" ", strip=True) for td in tr.find_all("td")]
+            if len(cells) < 3:
+                continue
+            local, gmt = _hhmm_to_minutes(cells[1]), _hhmm_to_minutes(cells[2])
+            if local is None or gmt is None:
+                continue
+            offset = (local - gmt) % 1440           # circuit's UTC offset in minutes
+            if offset > 720:
+                offset -= 1440
+            utc = (day + timedelta(minutes=local - offset)).replace(tzinfo=timezone.utc)
+            sessions.append((utc, cells[0]))
+    return sessions
 
 
 async def _fetch_gt_world_challenge(
@@ -558,7 +633,9 @@ async def _fetch_gt_world_challenge(
 ) -> tuple[list[Event], str | None]:
     """
     All GT World Challenge rounds (Europe, America, Asia, Australia) from the
-    umbrella site's season calendar: one entry per race weekend covering target_date.
+    umbrella site's season calendar. For each race weekend near target_date the
+    event page's timetable gives per-session rows in CLT; weekends without a
+    published timetable fall back to a single "TBD" row.
     """
     events: list[Event] = []
     year = target_date.year
@@ -601,6 +678,9 @@ async def _fetch_gt_world_challenge(
         except (ValueError, TypeError):
             return None
 
+    # Race weekends near target_date. Sessions carry the circuit's local clock, so one on
+    # the first/last local day can fall on the neighbouring date in Chile → widen by a day.
+    weekends: list[dict] = []
     for item in soup.select("li.calendar__list-item"):
         start_el = item.select_one("div.calendar__date-start")
         end_el   = item.select_one("div.calendar__date-end")
@@ -610,7 +690,8 @@ async def _fetch_gt_world_challenge(
         end   = _parse_gt_date(end_el) if end_el else start
         if not start:
             continue
-        if not (start <= target_date <= (end or start)):
+        end = end or start
+        if not (start - timedelta(days=1) <= target_date <= end + timedelta(days=1)):
             continue
 
         def _text(selector: str) -> str:
@@ -621,38 +702,72 @@ async def _fetch_gt_world_challenge(
         if any(w in circuit.lower() for w in _GT_NON_RACE_WORDS):
             continue
 
-        continent   = _text(".calendar__continent-tag")          # Europe / America / Asia / Australia
-        country     = _text(".calendar__race-subheading-text").replace("United States of America", "USA")
         series_text = _text(".calendar__race-text")              # Europe adds "Endurance Cup" / "Sprint Cup"
-        cup = next((c for c in ("Endurance Cup", "Sprint Cup") if c in series_text), "")
+        link = item.select_one("a.calendar__footer-list-link")
+        weekends.append({
+            "start": start,
+            "end": end,
+            "circuit": circuit,
+            "continent": _text(".calendar__continent-tag"),      # Europe / America / Asia / Australia
+            "country": _text(".calendar__race-subheading-text").replace("United States of America", "USA"),
+            "cup": next((c for c in ("Endurance Cup", "Sprint Cup") if c in series_text), ""),
+            "url": link["href"] if link else "",
+        })
 
-        date_range = (
-            f"{start.strftime('%d %b')}–{end.strftime('%d %b %Y')}"
-            if end and end != start else start.strftime("%d %b %Y")
-        )
+    async def _fetch_sessions(w: dict) -> list[tuple[datetime, str]]:
+        """Session list from the event page; [] if unavailable or not published yet."""
+        if not w["url"]:
+            return []
+        try:
+            r2 = await client.get(w["url"], headers=HEADERS, follow_redirects=True)
+            r2.raise_for_status()
+            return _parse_gt_timetable(BeautifulSoup(r2.text, "lxml"), w["start"])
+        except Exception as exc:
+            LOG.warning("GT event page %s: %s", w["url"], exc)
+            return []
 
-        events.append(Event(
-            competition=f"GT World Challenge {continent}".strip(),
-            category="motor",
-            home_team=circuit,
-            away_team="",
-            time_clt="TBD",
-            platform=_platform("GT World Challenge"),
-            round=" · ".join(p for p in (cup, country, date_range) if p),
-        ))
+    all_sessions = await asyncio.gather(*[_fetch_sessions(w) for w in weekends])
+
+    for w, sessions in zip(weekends, all_sessions):
+        competition = f"GT World Challenge {w['continent']}".strip()
+        if sessions:
+            for utc_dt, s_name in sessions:
+                if utc_dt.astimezone(CLT).date() != target_date:
+                    continue
+                if any(word in f" {s_name.lower()} " for word in _GT_NON_SESSION_WORDS):
+                    continue
+                events.append(Event(
+                    competition=competition,
+                    category="motor",
+                    home_team=w["circuit"],
+                    away_team="",
+                    time_clt=utc_dt.astimezone(CLT).strftime("%H:%M"),
+                    platform=_platform("GT World Challenge"),
+                    round=" · ".join(p for p in (_session_label_es(s_name), w["cup"]) if p),
+                ))
+        elif w["start"] <= target_date <= w["end"]:
+            # No timetable published yet → one TBD row for the race weekend.
+            date_range = (
+                f"{w['start'].strftime('%d %b')}–{w['end'].strftime('%d %b %Y')}"
+                if w["end"] != w["start"] else w["start"].strftime("%d %b %Y")
+            )
+            events.append(Event(
+                competition=competition,
+                category="motor",
+                home_team=w["circuit"],
+                away_team="",
+                time_clt="TBD",
+                platform=_platform("GT World Challenge"),
+                round=" · ".join(p for p in (w["cup"], w["country"], date_range) if p),
+            ))
 
     return events, None
 
 
 def _wec_session_label(sub_event_name: str) -> str:
     """'Qualifying - HYPERCAR - 6 Hours of Monza' → 'Clasificación - HYPERCAR'."""
-    import re as _re
     # Sub-event names end with " - <race name>"; drop that suffix.
-    label = sub_event_name.rpartition(" - ")[0] or sub_event_name
-    label = _re.sub(r"^Free Practice", "Práctica", label)
-    label = _re.sub(r"^Qualifying", "Clasificación", label)
-    label = _re.sub(r"^Race$", "Carrera", label)
-    return label
+    return _session_label_es(sub_event_name.rpartition(" - ")[0] or sub_event_name)
 
 
 async def _fetch_wec(
