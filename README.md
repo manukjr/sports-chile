@@ -13,10 +13,10 @@ pip install -r requirements.txt
 
 ```bash
 # Hoy
-python sports.py
+python sports_ci.py
 
 # Fecha específica
-python sports.py 2026-05-17
+python sports_ci.py 2026-05-17
 ```
 
 El script crea `deportes_YYYY-MM-DD.html` en el directorio actual y lo abre automáticamente en el navegador.
