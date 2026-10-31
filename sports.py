@@ -523,24 +523,49 @@ async def _fetch_f1(year: int, target_date: datetime.date, client: httpx.AsyncCl
 
 
 # ---------------------------------------------------------------------------
-# 3-letter uppercase month abbreviations used by gt-world-challenge-europe.com
+# 3-letter uppercase month abbreviations used by the GT World Challenge sites
 # ---------------------------------------------------------------------------
 _GT_MONTH_ABBR = {
     "JAN": 1, "FEB": 2, "MAR": 3, "APR": 4, "MAY": 5, "JUN": 6,
     "JUL": 7, "AUG": 8, "SEP": 9, "OCT": 10, "NOV": 11, "DEC": 12,
 }
 
+# Umbrella calendar covering all four series (Europe, America, Asia, Australia).
+_GT_CALENDAR_URL = "https://www.gt-world-challenge.com/calendar"
+# The calendar also lists non-racing dates (e.g. "AWARDS Banquet", "End of Year Gala").
+_GT_NON_RACE_WORDS = ("banquet", "gala", "award")
+
 
 async def _fetch_gt_world_challenge(
     target_date: datetime.date, client: httpx.AsyncClient
 ) -> tuple[list[Event], str | None]:
-    """Parse li.calendar__list-item entries on the GT World Challenge calendar."""
-    url = "https://www.gt-world-challenge-europe.com/calendar"
+    """
+    All GT World Challenge rounds (Europe, America, Asia, Australia) from the
+    umbrella site's season calendar: one entry per race weekend covering target_date.
+    """
     events: list[Event] = []
+    year = target_date.year
     try:
-        r = await client.get(url, headers=HEADERS, follow_redirects=True)
+        r = await client.get(_GT_CALENDAR_URL, headers=HEADERS, follow_redirects=True)
         r.raise_for_status()
         soup = BeautifulSoup(r.text, "lxml")
+
+        # The page shows the current season by default; switch if the target year differs.
+        selected = soup.select_one("select#filter_season_id option[selected]")
+        if selected and selected.get_text(strip=True) != str(year):
+            wanted = next(
+                (o for o in soup.select("select#filter_season_id option")
+                 if o.get_text(strip=True) == str(year)),
+                None,
+            )
+            if wanted is None:
+                return events, None  # that season isn't published yet
+            r = await client.get(
+                _GT_CALENDAR_URL, params={"filter_season_id": wanted["value"]},
+                headers=HEADERS, follow_redirects=True,
+            )
+            r.raise_for_status()
+            soup = BeautifulSoup(r.text, "lxml")
     except Exception as exc:
         LOG.error("GT World Challenge scrape error: %s", exc)
         return events, f"GT World Challenge: {exc}"
@@ -572,20 +597,46 @@ async def _fetch_gt_world_challenge(
         if not (start <= target_date <= (end or start)):
             continue
 
-        name_el = item.select_one("h3.calendar__race-header")
-        name    = name_el.get_text(strip=True) if name_el else "GT World Challenge"
+        def _text(selector: str) -> str:
+            el = item.select_one(selector)
+            return el.get_text(strip=True) if el else ""
+
+        circuit = _text("h3.calendar__race-header") or "GT World Challenge"
+        if any(w in circuit.lower() for w in _GT_NON_RACE_WORDS):
+            continue
+
+        continent   = _text(".calendar__continent-tag")          # Europe / America / Asia / Australia
+        country     = _text(".calendar__race-subheading-text").replace("United States of America", "USA")
+        series_text = _text(".calendar__race-text")              # Europe adds "Endurance Cup" / "Sprint Cup"
+        cup = next((c for c in ("Endurance Cup", "Sprint Cup") if c in series_text), "")
+
+        date_range = (
+            f"{start.strftime('%d %b')}–{end.strftime('%d %b %Y')}"
+            if end and end != start else start.strftime("%d %b %Y")
+        )
 
         events.append(Event(
-            competition="GT World Challenge",
+            competition=f"GT World Challenge {continent}".strip(),
             category="motor",
-            home_team=name,
+            home_team=circuit,
             away_team="",
             time_clt="TBD",
             platform=_platform("GT World Challenge"),
-            round=f"{start.strftime('%d %b')}–{end.strftime('%d %b %Y')}" if end and end != start else start.strftime("%d %b %Y"),
+            round=" · ".join(p for p in (cup, country, date_range) if p),
         ))
 
     return events, None
+
+
+def _wec_session_label(sub_event_name: str) -> str:
+    """'Qualifying - HYPERCAR - 6 Hours of Monza' → 'Clasificación - HYPERCAR'."""
+    import re as _re
+    # Sub-event names end with " - <race name>"; drop that suffix.
+    label = sub_event_name.rpartition(" - ")[0] or sub_event_name
+    label = _re.sub(r"^Free Practice", "Práctica", label)
+    label = _re.sub(r"^Qualifying", "Clasificación", label)
+    label = _re.sub(r"^Race$", "Carrera", label)
+    return label
 
 
 async def _fetch_wec(
@@ -593,8 +644,10 @@ async def _fetch_wec(
 ) -> tuple[list[Event], str | None]:
     """
     1. Scrape fiawec.com homepage for /en/race/...-{year} links.
-    2. Fetch each race page in parallel and parse JSON-LD for startDate/endDate.
-    3. Return events whose date window covers target_date.
+    2. Fetch each race page in parallel and parse its JSON-LD.
+    3. Emit one row per session (practice, qualifying, race...) whose start time,
+       converted to CLT, falls on target_date. Pages without a published session
+       list fall back to a single "TBD" row for the race weekend.
     """
     import json as _json
     import re as _re
@@ -628,7 +681,7 @@ async def _fetch_wec(
 
     pages = await asyncio.gather(*[_fetch_race_page(u) for u in race_links])
 
-    # Step 3 — parse JSON-LD for startDate / endDate
+    # Step 3 — parse JSON-LD for the weekend window and per-session start times
     for url, html in pages:
         if not html:
             continue
@@ -637,6 +690,8 @@ async def _fetch_wec(
             try:
                 ld = _json.loads(script.string or "")
             except Exception:
+                continue
+            if not isinstance(ld, dict):
                 continue
             start_raw = ld.get("startDate", "")
             end_raw   = ld.get("endDate",   "")
@@ -647,23 +702,48 @@ async def _fetch_wec(
                 end   = datetime.fromisoformat(end_raw).date() if end_raw else start
             except ValueError:
                 continue
-            if not (start <= target_date <= end):
-                continue
 
             name = ld.get("name") or soup2.select_one("h1, h2")
             if hasattr(name, "get_text"):
                 name = name.get_text(strip=True)
             name = str(name or "WEC Event")
+            # "WEC 6 Hours of Monza 2026" → "6 Hours of Monza"
+            title = _re.sub(rf"\s+{year}$", "", _re.sub(r"^WEC\s+", "", name))
+            city  = (ld.get("location") or {}).get("name", "")
 
-            events.append(Event(
-                competition="WEC",
-                category="motor",
-                home_team=name,
-                away_team="",
-                time_clt="TBD",
-                platform=_platform("WEC"),
-                round=f"{start.strftime('%d %b')}–{end.strftime('%d %b %Y')}" if end != start else start.strftime("%d %b %Y"),
-            ))
+            sessions = [
+                (s.get("startDate", ""), s.get("name", ""))
+                for s in ld.get("subEvent", [])
+                if isinstance(s, dict) and s.get("startDate")
+            ]
+            if sessions:
+                # Session times carry the circuit's UTC offset; match on the CLT date,
+                # not the weekend window (an early Fuji session lands the day before in Chile).
+                for s_start, s_name in sessions:
+                    if _iso_to_clt_date(s_start) != target_date.isoformat():
+                        continue
+                    events.append(Event(
+                        competition="WEC",
+                        category="motor",
+                        home_team=title,
+                        away_team="",
+                        time_clt=_iso_to_clt(s_start),
+                        platform=_platform("WEC"),
+                        round=" · ".join(p for p in (_wec_session_label(s_name), city) if p),
+                    ))
+            elif start <= target_date <= end:
+                events.append(Event(
+                    competition="WEC",
+                    category="motor",
+                    home_team=title,
+                    away_team="",
+                    time_clt="TBD",
+                    platform=_platform("WEC"),
+                    round=(
+                        f"{start.strftime('%d %b')}–{end.strftime('%d %b %Y')}"
+                        if end != start else start.strftime("%d %b %Y")
+                    ),
+                ))
             break  # one entry per race page
 
     return events, None
